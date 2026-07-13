@@ -148,7 +148,8 @@ public static class IngestionHandlers
         await session.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
-    private static async Task<(bool IsNew, bool Changed)> UpsertRowAsync(
+    /// <summary>Idempotent upsert of one listing row's court + property (internal for tests).</summary>
+    internal static async Task<(bool IsNew, bool Changed)> UpsertRowAsync(
         IDocumentSession session, string prefectureId, ListingRow row, TimeProvider time)
     {
         var now = time.GetUtcNow();

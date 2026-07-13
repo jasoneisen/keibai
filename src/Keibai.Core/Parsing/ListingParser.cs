@@ -26,7 +26,9 @@ public sealed record ListingPage(int TotalCount, int CurrentPage, int PageSize, 
 /// </summary>
 public static partial class ListingParser
 {
-    [GeneratedRegex(@"tranPropertyDetail\(\s*[""']?(\d+)[""']?\s*,\s*[""']?(\d+)[""']?",
+    // The onclick attribute survives in InnerHtml with entity-encoded quotes (&quot; / &#39;), so match a
+    // run of digits between any quote form.
+    [GeneratedRegex(@"tranPropertyDetail\(\s*(?:""|'|&quot;|&#39;)?(\d+)(?:""|'|&quot;|&#39;)?\s*,\s*(?:""|'|&quot;|&#39;)?(\d+)(?:""|'|&quot;|&#39;)?",
         RegexOptions.CultureInvariant)]
     private static partial Regex DetailCall();
 

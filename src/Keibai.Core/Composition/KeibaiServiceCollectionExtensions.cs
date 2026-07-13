@@ -33,7 +33,10 @@ public static class KeibaiServiceCollectionExtensions
         services.AddMartenStore<IKeibaiStore>((StoreOptions opts) =>
             {
                 opts.Connection(connectionString);
-                opts.DatabaseSchemaName = "keibai";
+                // Schema is 'keibai' in every real deployment; tests override it (Keibai:SchemaName) to an
+                // ephemeral per-run schema so a shared database gives each test host full isolation.
+                var schema = configuration["Keibai:SchemaName"];
+                opts.DatabaseSchemaName = string.IsNullOrWhiteSpace(schema) ? "keibai" : schema;
                 opts.UseSystemTextJsonForSerialization();
                 opts.AutoCreateSchemaObjects = AutoCreate.CreateOrUpdate;
 
@@ -51,9 +54,12 @@ public static class KeibaiServiceCollectionExtensions
 
         services.AddSingleton<IKeibaiStoreAccessor, KeibaiStoreAccessor>();
 
-        // Blob store: local filesystem content-addressed store under Keibai:BlobStore:Root.
-        var blobRoot = configuration["Keibai:BlobStore:Root"]
-                       ?? Path.Combine(AppContext.BaseDirectory, "blobstore");
+        // Blob store: local filesystem content-addressed store under Keibai:BlobStore:Root. Treat a blank
+        // config value (the appsettings.json default) as "unset" and fall back to a path next to the app.
+        var configuredRoot = configuration["Keibai:BlobStore:Root"];
+        var blobRoot = string.IsNullOrWhiteSpace(configuredRoot)
+            ? Path.Combine(AppContext.BaseDirectory, "blobstore")
+            : configuredRoot;
         services.AddSingleton<IDocumentBlobStore>(new FileSystemBlobStore(blobRoot));
 
         // Rate limiter is a singleton — ONE global gate for all BIT traffic.
