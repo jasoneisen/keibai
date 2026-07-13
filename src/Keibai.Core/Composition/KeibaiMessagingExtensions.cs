@@ -1,4 +1,5 @@
 using JasperFx.CodeGeneration.Model;
+using Keibai.Core.Ingestion;
 using Wolverine;
 
 namespace Keibai.Core.Composition;
@@ -27,5 +28,22 @@ public static class KeibaiMessagingExtensions
 
         // All Keibai background work is durable so a restart never loses an in-flight sweep/detail item.
         opts.Policies.UseDurableLocalQueues();
+
+        // ONE strictly sequential queue for every message that touches BIT. Conventional routing gave
+        // each message type its own queue, so several handlers executed concurrently and all blocked on
+        // the single 1-req/3s rate-limit slot — stretching each other's wall-clock until Wolverine's
+        // execution timeout cancelled them mid-handler. Sequential processing means exactly one
+        // BIT-touching handler runs at a time (the crawling rules' "single-threaded" made literal);
+        // since the rate limiter is the throughput bottleneck anyway, this costs nothing.
+        opts.PublishMessage<SyncCourts>().ToLocalQueue("keibai-ingestion");
+        opts.PublishMessage<SyncPrefectureListings>().ToLocalQueue("keibai-ingestion");
+        opts.PublishMessage<SyncPropertyDetail>().ToLocalQueue("keibai-ingestion");
+        opts.LocalQueue("keibai-ingestion").Sequential();
+
+        // A prefecture-listings handler legitimately runs for minutes (pages × 3s); the 60s default
+        // execution timeout cancelled it mid-pagination. NOTE: this is a GLOBAL WolverineOptions
+        // setting — at merge time, reconcile with the OMD host (its handlers are all short, so a
+        // generous ceiling is safe, but the decision should be conscious).
+        opts.DefaultExecutionTimeout = TimeSpan.FromMinutes(30);
     }
 }
