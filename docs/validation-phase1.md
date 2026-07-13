@@ -67,3 +67,42 @@ curl -X POST http://127.0.0.1:5199/sync/all
 Each prefecture writes a `CrawlRun` with `RequestsMade`; summing them after a sweep gives the
 nationwide request total (expected low thousands — flag if higher). BIT's site-wide displayed count
 (~1,100 active) is the target to compare the nationwide `PropertyItem` total against (±2%).
+
+## Nationwide sweep — EXECUTED 2026-07-13 (results)
+
+The full sweep ran on 2026-07-13 (multiple passes while two pipeline bugs were found and fixed —
+see below). The authoritative final pass (05:09–05:16 UTC, plus the 06:40 Hokkaidō/Shimane rerun):
+
+| metric | value |
+|---|---|
+| Prefecture searches | 51 first pages (46 JIS codes + Hokkaidō 91–94 + Shimane re-verify) |
+| Rows parsed from listing pages | **1,117** |
+| Distinct `PropertyItem` docs (courtId:saleUnitId) | **1,117** — zero row loss |
+| Detail-enriched (lat/lng from pr001/h05) | 1,117 / 1,117 (100%) |
+| Sum of BIT's own `totalCount` fields | 1,144 |
+| Delta vs BIT displayed totals | 27 (2.4%) — see note |
+| Courts discovered | 93 (only courts with active listings appear in rows) |
+| Prefecture codes with ≥1 listing | 49 of 50 (Shimane = 0, verified genuine empty 結果一覧) |
+| BIT requests, final pass + rerun | ~1,290 total session requests incl. details |
+| Handler failures in final pass | 0 |
+
+**totalCount note:** every card BIT rendered was parsed (rows parsed = docs ingested, exactly).
+`totalCount` counts all 物件 including non-representative items of multi-item cases, while the list
+renders 代表物件 cards ("検索結果一覧には主に代表物件の情報が表示されます") — the 27-item delta
+is that gap, consistent with the Tokyo validation's 42-vs-41 observation, not ingestion loss.
+
+### Bugs found by the sweep (all fixed, tested, pushed)
+
+1. **HttpClient timeout counted rate-limiter queue wait** — 120 s `HttpClient.Timeout` cancelled
+   every request queued >120 s behind the 1-req/3 s gate. Fix: infinite client timeout;
+   per-attempt `BitOptions.RequestTimeout` applied inside `BitRateLimitingHandler` after slot
+   acquire; Polly moved OUTSIDE the limiter so retries re-enter the gate (the 2 s backoff had
+   violated the 3 s floor).
+2. **Concurrent handlers vs Wolverine's 60 s execution timeout** — per-type local queues ran
+   handlers concurrently, all contending for one rate slot; long pagination died mid-handler.
+   Fix: all ingestion messages route to ONE `Sequential()` `keibai-ingestion` queue (single-threaded
+   against BIT, literally) + `DefaultExecutionTimeout` 30 min.
+3. **Hokkaidō silently empty** — BIT has no `prefecturesId=01`; Hokkaidō uses district pseudo-codes
+   91–94, and the invalid request returned BIT's エラー page as HTTP 200, parsed as "0 rows". Fix:
+   `Prefectures.All` = 91–94 + 02–47; `Regions.cs` rewritten to BIT's real block map (verified
+   live); `BitErrorPageException` makes any エラー page loud (fixture `error_page.html`).
