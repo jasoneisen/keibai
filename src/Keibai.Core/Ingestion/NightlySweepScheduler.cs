@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Wolverine;
@@ -10,7 +11,7 @@ namespace Keibai.Core.Ingestion;
 /// Wolverine handlers. Gated by the same kill-switch as the client (a disabled ingestion never sweeps).
 /// </summary>
 public sealed class NightlySweepScheduler(
-    IMessageBus bus,
+    IServiceProvider services,
     TimeProvider time,
     ILogger<NightlySweepScheduler> log) : BackgroundService
 {
@@ -33,6 +34,8 @@ public sealed class NightlySweepScheduler(
                 return;
             }
 
+            await using var scope = services.CreateAsyncScope();
+            var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
             await bus.PublishAsync(new SyncCourts()).ConfigureAwait(false);
         }
     }

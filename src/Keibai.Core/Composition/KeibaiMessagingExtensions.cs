@@ -1,3 +1,4 @@
+using JasperFx.CodeGeneration.Model;
 using Wolverine;
 
 namespace Keibai.Core.Composition;
@@ -17,6 +18,12 @@ public static class KeibaiMessagingExtensions
     {
         // Discover the handlers that live in Keibai.Core via the marker type.
         opts.Discovery.IncludeAssembly(typeof(KeibaiMarker).Assembly);
+
+        // The BIT client is a typed HttpClient (AddHttpClient<BitClient>) — an opaque factory that
+        // Wolverine's codegen can't inline-construct, so it must be resolved by service location. Permit
+        // it (with a warning) rather than force-registering the client as a plain type, which would lose
+        // the IHttpClientFactory handler pipeline (the rate-limit/kill-switch delegating handler).
+        opts.ServiceLocationPolicy = ServiceLocationPolicy.AllowedButWarn;
 
         // All Keibai background work is durable so a restart never loses an in-flight sweep/detail item.
         opts.Policies.UseDurableLocalQueues();

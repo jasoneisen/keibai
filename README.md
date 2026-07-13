@@ -1,0 +1,96 @@
+# Keibai
+
+Personal-use archive + search for Japanese court real-estate auctions (競売). Ingests listings from
+**BIT** (the Supreme Court's 不動産競売物件情報サイト), archives the 3点セット PDFs before the courts
+delete them, and (Phase 3) lets you browse/search locally. **.NET 10 · Blazor · Wolverine · Marten ·
+PostgreSQL.** No monetization, no public deployment — designed to later merge into `offmarket.deals`
+as the `jp.` market.
+
+> This repo is Phase 1: recon + scaffold + nationwide listing ingestion. See
+> `todo`/the handoff prompts for the full plan.
+
+## Layout
+
+```
+src/Keibai         thin ASP.NET Core host shell (composition root + shared-password gate + /healthz)
+src/Keibai.Web     Blazor RCL (pages under /jp; the search UI arrives in Phase 3)
+src/Keibai.Core    domain documents, HTML parsers, the BIT client, the Wolverine ingestion pipeline
+tests/Keibai.Tests       parser/rate-limit/kill-switch/idempotency + Alba host tests (xUnit v3, MTP)
+tests/Keibai.Web.Tests   bUnit component tests
+tests/fixtures/bit       raw BIT responses captured during recon (parser tests run against these)
+docs/bit-api.md          the reverse-engineered BIT request flow (endpoint by endpoint)
+docs/validation-phase1.md  Tokyo validation results
+```
+
+The merge into `offmarket.deals` is `copy the Keibai.* projects + ~6 lines`: the host calls
+`AddKeibai(...)` + `ConfigureKeibaiMessaging(...)` (the two extension methods that ARE the merge
+artifact), registers the ancillary `IKeibaiStore` (schema `keibai`, never the default Marten store),
+and adds the RCL assembly to its existing `MapRazorComponents`.
+
+## Run it
+
+Postgres is required. Either use this repo's compose file:
+
+```bash
+docker compose up -d db          # imresamu/postgis on localhost:5432, creates the 'keibai' database
+```
+
+…or, if `docker compose` is unavailable (e.g. inside the PropertyPartner devcontainer), point at the
+devcontainer's shared Postgres and a dedicated database:
+
+```bash
+# one-time: create the database on the devcontainer Postgres (host 'db')
+PGPASSWORD=postgres psql -h db -U postgres -d postgres -c "CREATE DATABASE keibai"
+export ConnectionStrings__Keibai="Host=db;Port=5432;Database=keibai;Username=postgres;Password=postgres"
+```
+
+Then:
+
+```bash
+dotnet run --project src/Keibai        # boots Marten (auto schema) + Wolverine (durable queues)
+curl http://localhost:5199/healthz     # {"status":"ok"}
+```
+
+`appsettings.Development.json` already points at `localhost:5432/keibai` and sets
+`Keibai:Ingestion:Enabled=true`; `appsettings.json` ships **ingestion disabled** (the kill-switch) and
+blank secrets.
+
+### Triggering ingestion
+
+```bash
+curl -X POST http://localhost:5199/sync/prefecture/13   # one prefecture (Tokyo) — good for testing
+curl -X POST http://localhost:5199/sync/all             # nationwide sweep (hours at the rate limit)
+```
+
+A nightly sweep also fires automatically at **01:00 JST** (`NightlySweepScheduler`).
+
+## Crawling rules (non-negotiable — this is a court system)
+
+Enforced in code, not by convention: **1 request / 3 s, single-threaded** (one global rate limiter in
+a delegating handler), honest UA `keibai-personal-archive/0.1`, no proxies/UA-rotation, exponential
+backoff (max 3 retries), every raw response stored before parsing, and a single kill-switch
+(`Keibai:Ingestion:Enabled=false`) that stops all outbound traffic. A 403/429/block-page stops the
+crawl and surfaces — it is never retried around.
+
+## Tests
+
+```bash
+bash test.sh    # self-provisions the keibai db, builds with the style gate, runs both test projects
+```
+
+> `test.sh` runs the Microsoft.Testing.Platform test executables directly. The `dotnet test` CLI
+> currently has a handshake bug with the MTP runner pinned in `global.json`, so invoke the gate via
+> `test.sh` (or run the built `tests/*/bin/.../<Project>` binary) rather than `dotnet test`.
+
+## Config keys (all under `Keibai:`)
+
+| key | meaning |
+|---|---|
+| `ConnectionStrings:Keibai` | the `keibai` Postgres database |
+| `Keibai:Ingestion:Enabled` | master kill-switch (default **false**) |
+| `Keibai:Ingestion:MinRequestInterval` | rate floor (default `00:00:03`) |
+| `Keibai:Ingestion:MaxRetries` | Polly retries (default 3) |
+| `Keibai:Ingestion:ArchivePrefectures` | (Phase 2) prefectures to archive PDFs for; empty = all |
+| `Keibai:BlobStore:Root` | local content-addressed blob root (raw captures + PDFs) |
+| `Keibai:Auth:SharedPassword` | single shared-password gate; blank = open (dev) |
+```

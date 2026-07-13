@@ -11,31 +11,89 @@ namespace Keibai.Core.Bit;
 public static class BitForms
 {
     /// <summary>
-    /// Prefecture-level search body (proven-minimal, ~70 fields) that drives the first result page at
-    /// <c>/app/areaselect/ps002/h05</c>. All four sale classes; no price/area narrowing.
+    /// Prefecture-level search body for <c>/app/areaselect/ps002/h05</c>. BIT 500s on a partial body, so
+    /// this replays the FULL 70-field form captured during recon (all four sale classes, the Spring
+    /// <c>_...=on</c> checkbox markers, and the empty detail-condition fields). The region <c>blockCls</c>
+    /// + <c>blockName</c> are REQUIRED and looked up from the prefecture (blank block → 500), verified
+    /// live against Tokyo (prefecture 13 → block 03 関東, totalCount 42). See <c>docs/bit-api.md</c>.
     /// </summary>
     public static List<KeyValuePair<string, string>> PrefectureSearchPairs(
         string prefectureId, int currentPage, int pageSize)
     {
-        // saleCls repeats (one per checked type); the rest are single-valued. Order is not significant
-        // to BIT, but the four saleCls checkboxes plus the comma list are both required.
+        var (blockCls, blockName) = Regions.BlockFor(prefectureId);
         var pairs = new List<KeyValuePair<string, string>>
         {
-            new("tabId", "property"),
-            new("searchType", "1"),
-            new("prefecturesId", prefectureId),
-            new("blockCls", string.Empty),
             new("saleCls", "1"),
             new("saleCls", "2"),
             new("saleCls", "3"),
             new("saleCls", "4"),
-            new("saleClsList", "1,2,3,4"),
             new("saleStandardAmountCls", "1"),
+            new("saleStandardAmountTextMin", string.Empty),
+            new("saleStandardAmountTextMax", string.Empty),
+            new("_detailAreaInfoDto.landConditionClsList", "on"),
+            new("detailAreaInfoDto.landAreaMin", string.Empty),
+            new("detailAreaInfoDto.landAreaMax", string.Empty),
+            new("detailAreaInfoDto.detachedFloorAreaMin", string.Empty),
+            new("detailAreaInfoDto.detachedFloorAreaMax", string.Empty),
+            new("detailAreaInfoDto.detachedStoreyMin", string.Empty),
+            new("detailAreaInfoDto.detachedStoreyMax", string.Empty),
+            new("_detailAreaInfoDto.detachedPossessorExist", "on"),
+            new("_detailAreaInfoDto.detachedPossessorNone", "on"),
+            new("_detailAreaInfoDto.detachedDebtorFlg", "on"),
+            new("_detailAreaInfoDto.detachedOwnershipFlg", "on"),
+            new("_detailAreaInfoDto.detachedSuperficiesFlg", "on"),
+            new("_detailAreaInfoDto.detachedLeaseFlg", "on"),
+            new("_detailAreaInfoDto.detachedOthersSiteUseFlg", "on"),
+            new("detailAreaInfoDto.mansionExclusiveAreaMin", string.Empty),
+            new("detailAreaInfoDto.mansionExclusiveAreaMax", string.Empty),
+            new("detailAreaInfoDto.mansionStoreyMin", string.Empty),
+            new("detailAreaInfoDto.mansionStoreyMax", string.Empty),
+            new("detailAreaInfoDto.mansionFloorMin", string.Empty),
+            new("detailAreaInfoDto.mansionFloorMax", string.Empty),
+            new("_detailAreaInfoDto.mansionPossessorExist", "on"),
+            new("_detailAreaInfoDto.mansionPossessorNone", "on"),
+            new("_detailAreaInfoDto.mansionDebtorFlg", "on"),
+            new("detailAreaInfoDto.mansionAdminExpensesMin", string.Empty),
+            new("detailAreaInfoDto.mansionAdminExpensesMax", string.Empty),
+            new("_detailAreaInfoDto.mansionOwnershipFlg", "on"),
+            new("_detailAreaInfoDto.mansionSuperficiesFlg", "on"),
+            new("_detailAreaInfoDto.mansionLeaseFlg", "on"),
+            new("_detailAreaInfoDto.mansionOthersSiteUseFlg", "on"),
+            new("_detailAreaInfoDto.otherLandConditionClsList", "on"),
+            new("detailAreaInfoDto.otherLandAreaMin", string.Empty),
+            new("detailAreaInfoDto.otherLandAreaMax", string.Empty),
+            new("tabId", "property"),
+            new("stationBackPage", string.Empty),
+            new("prefecturesId", prefectureId),
+            new("blockCls", blockCls),
             new("mapShowFlag", "0"),
-            new("detailConditionOpenFlg", "0"),
-            new("hasCondition", "0"),
+            new("searchType", "1"),
             new("municipalityId", string.Empty),
+            new("municipalityNm", string.Empty),
+            new("mapSelectedAreaName", string.Empty),
+            new("detailConditionOpenFlg", "0"),
+            new("saleClsList", "1,2,3,4"),
             new("areaIdList", string.Empty),
+            new("blockName", blockName),
+            new("hasCondition", "0"),
+            new("landDetalConditionOpenFlag", string.Empty),
+            new("detachedDetalConditionOpenFlag", string.Empty),
+            new("mansionDetalConditionOpenFlag", string.Empty),
+            new("otherLandDetalConditionOpenFlag", string.Empty),
+            new("saleStandardAmountMin", string.Empty),
+            new("saleStandardAmountMax", string.Empty),
+            new("detailAreaInfoDto.landCls", string.Empty),
+            new("detailAreaInfoDto.detachedStructure1", string.Empty),
+            new("detailAreaInfoDto.detachedStructure2", string.Empty),
+            new("detailAreaInfoDto.detachedRoomArrangement", string.Empty),
+            new("detailAreaInfoDto.detacheLandKind", string.Empty),
+            new("detailAreaInfoDto.mansionStructure1", string.Empty),
+            new("detailAreaInfoDto.mansionStructure2", string.Empty),
+            new("detailAreaInfoDto.mansionRoomArrangement", string.Empty),
+            new("detailAreaInfoDto.mansionLandKind", string.Empty),
+            new("detailAreaInfoDto.mansionFloor", string.Empty),
+            new("detailAreaInfoDto.otherLandCls", string.Empty),
+            // Paging state (h05 for page 1; /app/search for later pages).
             new("currentPage", currentPage.ToString()),
             new("pageSize", pageSize.ToString()),
         };
@@ -53,6 +111,21 @@ public static class BitForms
         form["saleUnitId"] = saleUnitId;
         form["detailCourtId"] = courtId;
         form["transitionTabId"] = "1";
+        return form;
+    }
+
+    /// <summary>
+    /// Paging body for <c>/app/propertyresult/pr001/h39</c>: the previous results page's full
+    /// <c>propertyResultForm</c> envelope with the target page + size set (verified live: page 2 returns
+    /// a distinct set of sale units, <c>currentPage=2</c>).
+    /// </summary>
+    public static Dictionary<string, string> ListingPage(string previousPageHtml, int currentPage, int pageSize)
+    {
+        var form = ExtractForm(previousPageHtml, "propertyResultForm");
+        form["currentPage"] = currentPage.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        form["pageSize"] = pageSize.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        form["pageListChangeFlg"] = "0";
+        form["resultListSearchButtonFlag"] = "0";
         return form;
     }
 

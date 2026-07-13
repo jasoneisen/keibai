@@ -25,7 +25,7 @@ public class IngestionIdempotencyTests(HostFixture fixture)
         {
             foreach (var row in rows)
             {
-                var (isNew, _) = await IngestionHandlers.UpsertRowAsync(session, prefecture, row, time);
+                var (isNew, _) = await IngestionHandler.UpsertRowAsync(session, prefecture, row, time);
                 Assert.True(isNew);
             }
 
@@ -37,7 +37,7 @@ public class IngestionIdempotencyTests(HostFixture fixture)
         {
             foreach (var row in rows)
             {
-                var (isNew, changed) = await IngestionHandlers.UpsertRowAsync(session, prefecture, row, time);
+                var (isNew, changed) = await IngestionHandler.UpsertRowAsync(session, prefecture, row, time);
                 Assert.False(isNew);
                 Assert.False(changed);
             }

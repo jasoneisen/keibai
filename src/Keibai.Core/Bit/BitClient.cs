@@ -38,16 +38,27 @@ public sealed class BitClient
     }
 
     /// <summary>
-    /// Fetch a court's active listing for one prefecture and page. Returns the parsed page AND the raw
-    /// results HTML, because the detail endpoint requires the full <c>propertyResultForm</c> carried
-    /// forward from this exact response (BIT 500s on a partial detail POST).
+    /// Fetch the FIRST page of a prefecture's active listing via the search endpoint. Returns the parsed
+    /// page AND the raw results HTML (the detail + paging endpoints both require the full
+    /// <c>propertyResultForm</c> carried forward from this exact response — BIT 500s on a partial body).
     /// </summary>
-    public async Task<(ListingPage Page, string Html)> GetPrefectureListingAsync(
-        string prefectureId, int currentPage, int pageSize, CancellationToken ct = default)
+    public async Task<(ListingPage Page, string Html)> GetPrefectureFirstPageAsync(
+        string prefectureId, int pageSize, CancellationToken ct = default)
     {
-        var pairs = BitForms.PrefectureSearchPairs(prefectureId, currentPage, pageSize);
-        var path = currentPage <= 1 ? "/app/areaselect/ps002/h05" : "/app/search";
-        var html = await PostPairsForStringAsync(path, pairs, ct).ConfigureAwait(false);
+        var pairs = BitForms.PrefectureSearchPairs(prefectureId, 1, pageSize);
+        var html = await PostPairsForStringAsync("/app/areaselect/ps002/h05", pairs, ct).ConfigureAwait(false);
+        return (ListingParser.Parse(html), html);
+    }
+
+    /// <summary>
+    /// Fetch a subsequent listing page via the pager endpoint <c>/app/propertyresult/pr001/h39</c>,
+    /// replaying the previous page's full <c>propertyResultForm</c> envelope with <c>currentPage</c> set.
+    /// </summary>
+    public async Task<(ListingPage Page, string Html)> GetPrefectureNextPageAsync(
+        string previousPageHtml, int currentPage, int pageSize, CancellationToken ct = default)
+    {
+        var form = BitForms.ListingPage(previousPageHtml, currentPage, pageSize);
+        var html = await PostFormForStringAsync("/app/propertyresult/pr001/h39", form, ct).ConfigureAwait(false);
         return (ListingParser.Parse(html), html);
     }
 

@@ -98,8 +98,21 @@ pagination + search-state envelope. Observed values for Tokyo:
 | `pageListChangeFlg`, `navigationFlg` | | paging control flags |
 | `conditionShowFlag` | `H28` | opaque server state token echoed back |
 
-**Pagination**: re-POST the same `propertyResultForm` to `/app/search` with `currentPage`
-incremented (and/or `pageSize` = 10/20/30) until `currentPage * pageSize ≥ totalCount`.
+**Pagination** (CORRECTED after live testing — the results-page `<form action="/app/search">`
+default is a decoy; `/app/search` returns a Spring **404 JSON** on POST):
+
+- **Page 1** comes from the search itself (`POST /app/areaselect/ps002/h05`).
+- **Pages ≥2** come from **`POST /app/propertyresult/pr001/h39`**, replaying the *previous* page's
+  full `propertyResultForm` envelope with `currentPage` set (and `pageListChangeFlg=0`,
+  `resultListSearchButtonFlag=0`). Verified: page 2 returns `currentPage=2` and a distinct set
+  of sale units.
+- **BIT returns a FIXED 10 results per page and IGNORES the requested `pageSize`** (10/20/30 all
+  return 10). So the loop must use `pageSize = 10` in its page math, else pages are silently
+  skipped. Continue while `(currentPage-1)*10 < totalCount`.
+- `totalCount` is the **sale-unit** count (one `saleUnitId` per card), NOT the finer 物件-item
+  count. A card can bundle several 物件 (numbered 1,2,3…) sold as a set under one `saleUnitId`;
+  the `saleUnitId` is the archival unit and the natural key. (Tokyo: totalCount 42 → 5 pages →
+  41–42 unique sale units; the ~1 slack is a card that straddles a page boundary, deduped by key.)
 
 Each result row is:
 ```html

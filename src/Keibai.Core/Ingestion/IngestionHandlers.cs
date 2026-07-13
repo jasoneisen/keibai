@@ -13,7 +13,7 @@ namespace Keibai.Core.Ingestion;
 /// (court code; <c>{CourtId}:{SaleUnitId}</c>) so re-running any message is safe. Handlers live in
 /// <c>Keibai.Core</c> (never the host).
 /// </summary>
-public static class IngestionHandlers
+public static class IngestionHandler
 {
     /// <summary>Fan out a nationwide sweep into one message per prefecture.</summary>
     public static async Task Handle(SyncCourts _, IMessageBus bus)
@@ -46,16 +46,22 @@ public static class IngestionHandlers
         };
 
         var currentPage = 1;
-        const int pageSize = 30;
+        // BIT returns a FIXED 10 results per page and IGNORES the requested pageSize (verified live), so
+        // the page math must use 10 or later pages are silently skipped.
+        const int pageSize = 10;
         var total = int.MaxValue;
+        string? previousHtml = null;
 
         try
         {
             while ((currentPage - 1) * pageSize < total)
             {
-                var (page, html) = await client
-                    .GetPrefectureListingAsync(message.PrefectureId, currentPage, pageSize, ct)
-                    .ConfigureAwait(false);
+                var (page, html) = previousHtml is null
+                    ? await client.GetPrefectureFirstPageAsync(message.PrefectureId, pageSize, ct)
+                        .ConfigureAwait(false)
+                    : await client.GetPrefectureNextPageAsync(previousHtml, currentPage, pageSize, ct)
+                        .ConfigureAwait(false);
+                previousHtml = html;
                 run.RequestsMade++;
                 total = page.TotalCount;
 
