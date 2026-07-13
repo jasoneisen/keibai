@@ -1,0 +1,32 @@
+namespace Keibai.Core.Bit;
+
+/// <summary>
+/// All BIT ingestion configuration. Bound from the <c>Keibai:Ingestion</c> section so appsettings
+/// merge into the OMD host by concatenation.
+/// </summary>
+public sealed class BitOptions
+{
+    /// <summary>Config section name.</summary>
+    public const string SectionName = "Keibai:Ingestion";
+
+    /// <summary>
+    /// Master kill-switch. When false, the BIT client refuses every outbound request — the single
+    /// config toggle that stops all traffic to the court system.
+    /// </summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>Base address of the BIT site.</summary>
+    public string BaseUrl { get; set; } = "https://www.bit.courts.go.jp";
+
+    /// <summary>Honest, stable User-Agent. Never rotate this.</summary>
+    public string UserAgent { get; set; } = "keibai-personal-archive/0.1";
+
+    /// <summary>Minimum spacing between BIT requests. Non-negotiable floor: 3 seconds.</summary>
+    public TimeSpan MinRequestInterval { get; set; } = TimeSpan.FromSeconds(3);
+
+    /// <summary>Max Polly retries before parking the work item and alerting.</summary>
+    public int MaxRetries { get; set; } = 3;
+
+    /// <summary>Prefectures whose PDFs to archive (Phase 2). Empty = all.</summary>
+    public List<string> ArchivePrefectures { get; set; } = [];
+}

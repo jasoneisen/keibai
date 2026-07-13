@@ -1,0 +1,79 @@
+using Keibai.Core.Bit;
+using Keibai.Core.Domain;
+using Keibai.Core.Storage;
+using JasperFx;
+using Marten;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+
+namespace Keibai.Core.Composition;
+
+/// <summary>
+/// THE merge artifact. The standalone host and (later) the OMD host both call
+/// <see cref="AddKeibai"/> to register Keibai's ancillary Marten store, blob store, BIT client and
+/// options — byte-identical before and after the merge.
+/// </summary>
+public static class KeibaiServiceCollectionExtensions
+{
+    /// <summary>
+    /// Register everything Keibai needs beside a host: the <c>keibai</c>-schema ancillary Marten store,
+    /// the filesystem blob store, the rate-limited BIT <see cref="HttpClient"/>, and options bound from
+    /// the <c>Keibai:</c> config section.
+    /// </summary>
+    public static IServiceCollection AddKeibai(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<BitOptions>(configuration.GetSection(BitOptions.SectionName));
+
+        var connectionString = configuration.GetConnectionString("Keibai")
+            ?? throw new InvalidOperationException(
+                "ConnectionStrings:Keibai is required (the keibai Marten database).");
+
+        // ANCILLARY store — never AddMarten. schema 'keibai' keeps it isolated from the OMD default store.
+        services.AddMartenStore<IKeibaiStore>((StoreOptions opts) =>
+            {
+                opts.Connection(connectionString);
+                opts.DatabaseSchemaName = "keibai";
+                opts.UseSystemTextJsonForSerialization();
+                opts.AutoCreateSchemaObjects = AutoCreate.CreateOrUpdate;
+
+                opts.Schema.For<Court>().Identity(x => x.Id);
+                opts.Schema.For<PropertyItem>()
+                    .Identity(x => x.Id)
+                    .Index(x => x.CourtId)
+                    .Index(x => x.PrefectureId);
+                opts.Schema.For<ArchivedDocument>().Identity(x => x.Id).Index(x => x.PropertyItemId);
+                opts.Schema.For<SaleResult>().Index(x => x.PropertyItemId);
+                opts.Schema.For<CrawlRun>().Index(x => x.CourtId!).Index(x => x.PrefectureId!);
+                opts.Schema.For<RawCapture>().Index(x => x.ContentHash);
+            })
+            .ApplyAllDatabaseChangesOnStartup();
+
+        services.AddSingleton<IKeibaiStoreAccessor, KeibaiStoreAccessor>();
+
+        // Blob store: local filesystem content-addressed store under Keibai:BlobStore:Root.
+        var blobRoot = configuration["Keibai:BlobStore:Root"]
+                       ?? Path.Combine(AppContext.BaseDirectory, "blobstore");
+        services.AddSingleton<IDocumentBlobStore>(new FileSystemBlobStore(blobRoot));
+
+        // Rate limiter is a singleton — ONE global gate for all BIT traffic.
+        services.AddSingleton(sp => new BitRateLimiter(
+            sp.GetRequiredService<IOptionsMonitor<BitOptions>>(),
+            sp.GetRequiredService<TimeProvider>()));
+        services.AddTransient<BitRateLimitingHandler>();
+
+        // The BIT HttpClient: honest UA + base address, the rate-limit/kill-switch handler, and Polly
+        // exponential backoff (max retries from options; a block short-circuits before retry).
+        services.AddHttpClient<BitClient>((sp, http) =>
+            {
+                var options = sp.GetRequiredService<IOptions<BitOptions>>().Value;
+                http.BaseAddress = new Uri(options.BaseUrl);
+                http.DefaultRequestHeaders.UserAgent.ParseAdd(options.UserAgent);
+                http.Timeout = TimeSpan.FromSeconds(120);
+            })
+            .AddHttpMessageHandler<BitRateLimitingHandler>()
+            .AddPolicyHandler((sp, _) => BitRetryPolicy.Create(sp));
+
+        return services;
+    }
+}

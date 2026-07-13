@@ -1,0 +1,32 @@
+# Build output
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+*.user
+artifacts/
+
+# Rider/VS
+.idea/
+.vs/
+
+# Secrets — NEVER commit real config. Only appsettings.json (blank defaults) and
+# appsettings.Development.json (local, non-secret) are tracked; everything else is ignored.
+appsettings.Production.json
+appsettings.*.local.json
+*.secrets.json
+.env
+.env.*
+secrets/
+
+# Local blob store (archived court PDFs — personal use, never republish)
+blobstore/
+data/blobstore/
+
+# Recon / scratch artifacts
+scratch/
+*.pdf
+!tests/fixtures/**/*.pdf
+
+# OS
+.DS_Store

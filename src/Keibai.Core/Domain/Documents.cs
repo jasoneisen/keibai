@@ -1,0 +1,174 @@
+namespace Keibai.Core.Domain;
+
+/// <summary>Property sale-type classification (BIT <c>saleCls</c>).</summary>
+public enum SaleCls
+{
+    /// <summary>土地 — land.</summary>
+    Land = 1,
+    /// <summary>戸建 — detached house.</summary>
+    Detached = 2,
+    /// <summary>マンション — condominium unit.</summary>
+    Mansion = 3,
+    /// <summary>その他 — other.</summary>
+    Other = 4,
+}
+
+/// <summary>強制競売 (ヌ) vs 担保不動産競売 (ケ).</summary>
+public enum CaseType
+{
+    /// <summary>Unknown / unparsed.</summary>
+    Unknown = 0,
+    /// <summary>担保不動産競売 — secured-property auction (ケ).</summary>
+    Ke = 1,
+    /// <summary>強制競売 — compulsory auction (ヌ).</summary>
+    Nu = 2,
+}
+
+/// <summary>
+/// A BIT court or branch. Id is the 5-digit BIT court code (e.g. <c>31111</c> 東京地方裁判所本庁,
+/// <c>31131</c> 東京地方裁判所立川支部).
+/// </summary>
+public sealed class Court
+{
+    /// <summary>BIT court code (natural key).</summary>
+    public required string Id { get; set; }
+    /// <summary>Court name in Japanese.</summary>
+    public required string Name { get; set; }
+    /// <summary>JIS prefecture code 01–47.</summary>
+    public required string PrefectureId { get; set; }
+    /// <summary>True when the name contains 支部 (a branch, not a head office).</summary>
+    public bool IsBranch { get; set; }
+    /// <summary>When this court was first observed in a sweep.</summary>
+    public DateTimeOffset FirstSeen { get; set; }
+    /// <summary>When this court was last observed in a sweep.</summary>
+    public DateTimeOffset LastSeen { get; set; }
+}
+
+/// <summary>
+/// A parsed case number, e.g. 令和08年(ヌ)第12号 → Era=令和, Year=8, Type=Nu, Serial=12.
+/// </summary>
+public sealed record CaseNumber(string Era, int Year, CaseType Type, int Serial, string Raw);
+
+/// <summary>
+/// A single auction property item (物件 / BIT "sale unit"). Natural key = <see cref="Id"/> which is
+/// <c>{CourtId}:{SaleUnitId}</c> so re-ingestion is idempotent across courts.
+/// </summary>
+public sealed class PropertyItem
+{
+    /// <summary><c>{CourtId}:{SaleUnitId}</c> — the Marten identity.</summary>
+    public required string Id { get; set; }
+    /// <summary>BIT 11-digit sale-unit id.</summary>
+    public required string SaleUnitId { get; set; }
+    /// <summary>BIT court code.</summary>
+    public required string CourtId { get; set; }
+    /// <summary>JIS prefecture code the sweep drove this row from.</summary>
+    public required string PrefectureId { get; set; }
+    /// <summary>Court name as shown on the row.</summary>
+    public string? CourtName { get; set; }
+    /// <summary>Parsed case number (best-effort).</summary>
+    public CaseNumber? Case { get; set; }
+    /// <summary>Property type.</summary>
+    public SaleCls? SaleCls { get; set; }
+    /// <summary>Raw address as displayed (地番 or 住居表示).</summary>
+    public string? RawAddress { get; set; }
+    /// <summary>売却基準価額 (yen), where parsed.</summary>
+    public long? SaleStandardAmount { get; set; }
+    /// <summary>買受可能価額 (yen), where parsed.</summary>
+    public long? MinimumBidAmount { get; set; }
+    /// <summary>BIT-supplied latitude (best-effort, never trusted).</summary>
+    public double? Latitude { get; set; }
+    /// <summary>BIT-supplied longitude (best-effort, never trusted).</summary>
+    public double? Longitude { get; set; }
+    /// <summary>First time this item was observed.</summary>
+    public DateTimeOffset FirstSeen { get; set; }
+    /// <summary>Most recent time this item was observed.</summary>
+    public DateTimeOffset LastSeen { get; set; }
+    /// <summary>Takedown-ready flag (private system, but modelled now).</summary>
+    public bool Delisted { get; set; }
+    /// <summary>Reason for delisting, if any.</summary>
+    public string? DelistedReason { get; set; }
+}
+
+/// <summary>An archived 3点セット (or component) PDF.</summary>
+public sealed class ArchivedDocument
+{
+    /// <summary>sha256 hex of the bytes — the Marten identity + content address.</summary>
+    public required string Id { get; set; }
+    /// <summary>Owning property id (<c>{CourtId}:{SaleUnitId}</c>).</summary>
+    public required string PropertyItemId { get; set; }
+    /// <summary>Document kind: combined / 明細書 / 調査報告書 / 評価書 / 公告.</summary>
+    public required string Kind { get; set; }
+    /// <summary>Byte size.</summary>
+    public long ByteSize { get; set; }
+    /// <summary>Source URL it was fetched from.</summary>
+    public required string SourceUrl { get; set; }
+    /// <summary>When fetched.</summary>
+    public DateTimeOffset FetchedAt { get; set; }
+    /// <summary>Blob path in the <c>IDocumentBlobStore</c>.</summary>
+    public required string BlobPath { get; set; }
+    /// <summary>Server-supplied filename, if any (advisory).</summary>
+    public string? SuggestedFileName { get; set; }
+}
+
+/// <summary>Per-court per-run crawl statistics; powers monitoring.</summary>
+public sealed class CrawlRun
+{
+    /// <summary>Marten identity (guid).</summary>
+    public Guid Id { get; set; }
+    /// <summary>Court this run swept (null = nationwide orchestration run).</summary>
+    public string? CourtId { get; set; }
+    /// <summary>Prefecture driving the sweep, if court-level.</summary>
+    public string? PrefectureId { get; set; }
+    /// <summary>When the run started.</summary>
+    public DateTimeOffset StartedAt { get; set; }
+    /// <summary>When the run finished (null while in flight).</summary>
+    public DateTimeOffset? FinishedAt { get; set; }
+    /// <summary>Total BIT requests made during this run.</summary>
+    public int RequestsMade { get; set; }
+    /// <summary>Items found.</summary>
+    public int ItemsFound { get; set; }
+    /// <summary>Items newly created.</summary>
+    public int ItemsNew { get; set; }
+    /// <summary>Items whose fields changed.</summary>
+    public int ItemsChanged { get; set; }
+    /// <summary>Errors encountered.</summary>
+    public int Errors { get; set; }
+    /// <summary>Free-form notes (block-page detection, etc.).</summary>
+    public List<string> Notes { get; set; } = [];
+}
+
+/// <summary>売却結果 — the outcome of a bidding round for a property (Phase 2 populates this).</summary>
+public sealed class SaleResult
+{
+    /// <summary>Marten identity (guid).</summary>
+    public Guid Id { get; set; }
+    /// <summary>Owning property id (<c>{CourtId}:{SaleUnitId}</c>).</summary>
+    public required string PropertyItemId { get; set; }
+    /// <summary>開札 date.</summary>
+    public DateOnly? OpeningDate { get; set; }
+    /// <summary>売却価額 (winning bid, yen).</summary>
+    public long? WinningBid { get; set; }
+    /// <summary>Number of bids.</summary>
+    public int? BidCount { get; set; }
+    /// <summary>Outcome: sold / 不売 / 取下げ / 特別売却.</summary>
+    public string? Outcome { get; set; }
+}
+
+/// <summary>Raw pre-parse capture of a BIT response, keyed by url+timestamp.</summary>
+public sealed class RawCapture
+{
+    /// <summary>Marten identity (guid).</summary>
+    public Guid Id { get; set; }
+    /// <summary>Requested URL.</summary>
+    public required string Url { get; set; }
+    /// <summary>When captured.</summary>
+    public DateTimeOffset FetchedAt { get; set; }
+    /// <summary>sha256 hex of the raw bytes.</summary>
+    public required string ContentHash { get; set; }
+    /// <summary>Blob path of the raw bytes.</summary>
+    public required string BlobPath { get; set; }
+    /// <summary>HTTP status observed.</summary>
+    public int StatusCode { get; set; }
+    /// <summary>Content-Type observed.</summary>
+    public string? ContentType { get; set; }
+}

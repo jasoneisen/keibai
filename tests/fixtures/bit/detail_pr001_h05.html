@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="format-detection" content="telephone=no">
+	<title>競売物件検索：詳細 | BIT 不動産競売物件情報サイト</title>
+    <link href="/app/common/lib/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+	<link href="/app/common/css/main.css" rel="stylesheet">
+	<link  href="https://bizapis.mapion.co.jp/maps/api/v0.7/leaflet.css"  rel="stylesheet"/>
+    <link  href="https://bizapis.mapion.co.jp/maps/api/v0.7/mapion-plugin.css" rel="stylesheet"/>
+</head>
+
+<body id="bit__body" >
+	<!-- header -->
+
+	<div>
+	<div>
+		<nav class="container-fluid mb-2 px-0">
+	<div class="bit__header_inner">
+		<div
+			class="bit__header_blankSpace d-flex justify-content-between align-items-center row">
+			<!-- flexbox_left -->
+			<div class="bit__header_flexbox_left col-9 col-sm-4 pl-0 pr-0">
+				<a href="/app/top/pt001/h01"> <img class="col-12 px-0"
+					src="../../common/images/logo.png" alt="BIT　不動産競売物件情報サイト">
+				</a>
+			</div>
+			<!-- flexbox_right -->
+			<div
+				class="bit__header_flexbox_right d-flex flex-column col-2 col-sm-8 pl-0 pr-0">
+				<!-- hamburger menu -->
+				<div class="bit__header_menu_sp d-flex d-sm-none mt-3 mb-3">
+					<button type="button" class="bit__header_btn_menu">
+						<i class="bit__header_btn_menu_icon"></i>
+					</button>
+				</div>
+				<div class="bit__header_menu col-sm-11 px-0">
+					<div class="bit__header_menu_inner">
+						<div
+							class="d-flex flex-column-reverse flex-sm-column justify-content-end">
+							<!-- header_linkbox -->
+							<ul
+								class="bit__header_linkbox d-flex flex-column flex-sm-row justify-content-sm-end mt-4 mt-sm-0 mx-0 mb-0 p-0">
+								<li class="pt-sm-2 pr-sm-0 pb-sm-2 pl-sm-4"><a href="/help/index.html"
+									class="d-block p-3 p-sm-0">使い方</a></li>
+								<li class="pt-sm-2 pr-sm-0 pb-sm-2 pl-sm-4"><a href="/guidance/index.html"
+									class="d-block p-3 p-sm-0">手続案内</a></li>
+								<li class="pt-sm-2 pr-sm-0 pb-sm-2 pl-sm-4"><a href="/info/index.html"
+									class="d-block p-3 p-sm-0">お知らせ</a></li>
+								<li class="pt-sm-2 pr-sm-0 pb-sm-2 pl-sm-4"><a href="/words/index.html"
+									class="d-block p-3 p-sm-0">用語集</a></li>
+								<li class="pt-sm-2 pr-sm-0 pb-sm-2 pl-sm-4"><a href="/faq/index.html"
+									class="d-block p-3 p-sm-0">FAQ</a></li>
+								<li class="pt-sm-2 pr-sm-0 pb-sm-2 pl-sm-4"><a href="/contact.html"
+									class="d-block p-3 p-sm-0">お問い合わせ</a></li>
+							</ul>
+							<!-- navbar -->
+							<ul class="bit__navbar d-flex flex-column flex-sm-row m-0 p-0">
+								<li id="kyobaiblock" class="py-0 py-sm-1 px-0 col-sm-3"><a
+									href="#" onclick="tranArea(&#39;property&#39;,&#39;&#39;);"
+									class="d-block p-3 p-sm-0 text-sm-center">競売物件</a></li>
+								<li id="baikyakublock" class="py-0 py-sm-1 px-0 col-sm-3"><a
+									href="#" onclick="tranArea(&#39;result&#39;,&#39;&#39;);"
+									class="d-block p-3 p-sm-0 text-sm-center">売却結果</a></li>
+								<li id="pastdatablock" class="py-0 py-sm-1 px-0 col-sm-3"><a
+									href="#" onclick="tranArea(&#39;past&#39;,&#39;&#39;);"
+									class="d-block p-3 p-sm-0 text-sm-center">過去データ</a></li>
+								<li id="schedule" class="py-0 py-sm-1 px-0 col-sm-3"><a
+									href="/schedule/index.html" 
+									class="d-block p-3 p-sm-0 text-sm-center">スケジュール</a></li>
+							</ul>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- header_info -->
+	<div class="bit__header_info">
+		<div class="bit__header_blankSpace row">
+			<div class="col-12 py-2 px-0">
+				<p class="bit__text_small mb-0">
+					閲覧可能な競売物件は,<span class="bit__info_text_red mx-1">1,119</span>件です。（<span>2026年07月13日</span> <span>11</span>時現在）
+				</p>
+			</div>
+		</div>
+	</div>
+	<form id="headerForm" name="headerForm"
+		action="/app/area/pk001/h01" method="post">
+		<input type="hidden" id="menu_tabId" name="tabId">
+		<input type="hidden" id="menu_blockCls" name="blockCls">
+	</form>
+
+</nav>
+	</div>
+	
+</div>
+
+
+
+	<form id="dataForm"  action=""  method="post" >
+	
+     <div class="row mx-0 mb-2 mb-sm-3" style="display:none">
+            <div class="col-12 px-0">
+                <div class="alert alert-danger bit__alert-danger p-3 p-sm-4 mb-0" role="alert">
+                
+                
+                </div>
+            </div>
+     </div>
+        
+			<input id="saleUnitId" name="saleUNITID" type="hidden" value="00000021309"/>
+			<input id="courtId" name="courtID" type="hidden" value="31131"/>
+			<input id="detailsTabFromKbn" name="detailsTabFromKbn" type="hidden" value="1"/>
+			<input id="navigationFlag" name="navigationFlag" type="hidden" value="4"/>
+			<input id="conditionDispFlg" name="conditionDispFlg" type="hidden" value="H28"/>
+			<input id="transitionTabId" name="transitionTabId" type="hidden" value="1"/>
+			<input id="latitude" name="latitude" type="hidden" value="35.77939" />
+			<input id="longitude" name="longitude" type="hidden" value="139.284173" />
+         
+         <input id="saleScdId" name="saleScdId" type="hidden" value="" />
+		 <input id="period" name="period" type="hidden" value="" />
+		 <input id="topic_seni" name="topic_seni" type="hidden"  value=""/>
+         <div>
+		        <input id="searchType" name="searchType" type="hidden" value="1"/>
+		        <input id="prefecturesId" name="prefecturesId" type="hidden" value="13"/>
+		        <input id="courtId" name="courtId" type="hidden" value="31131"/>
+		        
+		           
+		               <input id="saleClsList" name="saleClsList[0]" type="hidden" value="1"/>
+		           
+		               <input id="saleClsList" name="saleClsList[1]" type="hidden" value="2"/>
+		           
+		               <input id="saleClsList" name="saleClsList[2]" type="hidden" value="3"/>
+		           
+		               <input id="saleClsList" name="saleClsList[3]" type="hidden" value="4"/>
+		           
+	            
+	
+		        <input id="kindAttributeCls" name="kindAttributeCls" type="hidden" value=""/>
+		        <input id="saleStandardAmountCls" name="saleStandardAmountCls" type="hidden" value="1"/>
+		        <input id="saleStandardAmountMin" name="saleStandardAmountMin" type="hidden" value=""/>
+		        <input id="saleStandardAmountMax" name="saleStandardAmountMax" type="hidden" value=""/>
+		        <input id="saleStandardAmountTextMin" name="saleStandardAmountTextMin" type="hidden" value=""/>
+		        <input id="saleStandardAmountTextMax" name="saleStandardAmountTextMax" type="hidden" value=""/>
+		        
+	
+		        
+		        <input id="eraCd" name="eraCd" type="hidden" value=""/>
+		        <input id="fiscalYear" name="fiscalYear" type="hidden" value=""/>
+		        <input id="caseNoMark" name="caseNoMark" type="hidden" value=""/>
+		        <input id="caseNo" name="caseNo" type="hidden" value=""/>
+		        
+		        
+		        
+		             
+		        
+		        
+		           
+	            
+	            
+	            
+	            <input type="hidden" id="mapShowFlag" name="mapShowFlag" value="0"/>
+				<input type="hidden" id="mapSelectedAreaName" name="mapSelectedAreaName" value=""/>
+		        <input id="municipalityId" name="municipalityId" type="hidden" value=""/>
+		        <input id="routeId" name="routeId" type="hidden" value=""/>
+		        <input id="relationId" name="relationId" type="hidden" value=""/>
+		        <input id="stationOpenFlg" name="stationOpenFlg" type="hidden" value=""/>
+		        <input id="detailConditionOpenFlg" name="detailConditionOpenFlg" type="hidden" value="0"/>
+		        <input id="hasCondition" name="hasCondition" type="hidden" value=""/>
+		        <input id="blockCls" name="blockCls" type="hidden" value="03"/>
+		        <input id="blockName" name="blockName" type="hidden" value="関東"/>
+		        <input id="tabId" name="tabId" type="hidden" value="property"/>
+		        <input id="allThingSearchFlg" name="allThingSearchFlg" type="hidden" value=""/>
+		        <input id="scheduleSaleScdId" name="scheduleSaleScdId" type="hidden" value=""/>
+		        <input id="schedulePeriod" name="schedulePeriod" type="hidden" value=""/>
+		        <input id="schedulePrefecturesId" name="schedulePrefecturesId" type="hidden" value=""/>
+		        <input id="scheduleCourtId" name="scheduleCourtId" type="hidden" value=""/>
+		        
+		            <input id="landCls" name="detailAreaInfoDto.landCls" type="hidden" value=""/>
+		            
+	                   
+					
+		            <input id="landAreaMin" name="detailAreaInfoDto.landAreaMin" type="hidden" value=""/>
+	                <input id="landAreaMax" name="detailAreaInfoDto.landAreaMax" type="hidden" value=""/>
+	                <input id="detachedFloorAreaMin" name="detailAreaInfoDto.detachedFloorAreaMin" type="hidden" value=""/>
+	                <input id="detachedFloorAreaMax" name="detailAreaInfoDto.detachedFloorAreaMax" type="hidden" value=""/>
+	                <input id="detachedStructure1" name="detailAreaInfoDto.detachedStructure1" type="hidden" value=""/>
+	                <input id="detachedStructure2" name="detailAreaInfoDto.detachedStructure2" type="hidden" value=""/>
+	                <input id="detachedRoomArrangement" name="detailAreaInfoDto.detachedRoomArrangement" type="hidden" value=""/>
+	                <input id="detacheLandKind" name="detailAreaInfoDto.detacheLandKind" type="hidden" value=""/>
+	                <input id="detachedStoreyMin" name="detailAreaInfoDto.detachedStoreyMin" type="hidden" value=""/>
+	                <input id="detachedStoreyMax" name="detailAreaInfoDto.detachedStoreyMax" type="hidden" value=""/>
+	                <input id="detachedPossessorExist" name="detailAreaInfoDto.detachedPossessorExist" type="hidden" value=""/>
+	                <input id="detachedPossessorNone" name="detailAreaInfoDto.detachedPossessorNone" type="hidden" value=""/>
+	                <input id="detachedDebtorFlg" name="detailAreaInfoDto.detachedDebtorFlg" type="hidden" value=""/>
+	                <input id="detachedOwnershipFlg" name="detailAreaInfoDto.detachedOwnershipFlg" type="hidden" value=""/>
+	                <input id="detachedSuperficiesFlg" name="detailAreaInfoDto.detachedSuperficiesFlg" type="hidden" value=""/>
+	                <input id="detachedLeaseFlg" name="detailAreaInfoDto.detachedLeaseFlg" type="hidden" value=""/>
+	                <input id="detachedOthersSiteUseFlg" name="detailAreaInfoDto.detachedOthersSiteUseFlg" type="hidden" value=""/>
+	                <input id="mansionExclusiveAreaMin" name="detailAreaInfoDto.mansionExclusiveAreaMin" type="hidden" value=""/>
+	                <input id="mansionExclusiveAreaMax" name="detailAreaInfoDto.mansionExclusiveAreaMax" type="hidden" value=""/>
+	                <input id="mansionStructure1" name="detailAreaInfoDto.mansionStructure1" type="hidden" value=""/>
+	                <input id="mansionStructure2" name="detailAreaInfoDto.mansionStructure2" type="hidden" value=""/>
+	                <input id="mansionRoomArrangement" name="detailAreaInfoDto.mansionRoomArrangement" type="hidden" value=""/>
+	                <input id="mansionLandKind" name="detailAreaInfoDto.mansionLandKind" type="hidden" value=""/>
+	                <input id="mansionStoreyMin" name="detailAreaInfoDto.mansionStoreyMin" type="hidden" value=""/>
+	                <input id="mansionStoreyMax" name="detailAreaInfoDto.mansionStoreyMax" type="hidden" value=""/>
+	                <input id="mansionFloor" name="detailAreaInfoDto.mansionFloor" type="hidden" value=""/>
+	                <input id="mansionFloorMin" name="detailAreaInfoDto.mansionFloorMin" type="hidden" value=""/>
+	                <input id="mansionFloorMax" name="detailAreaInfoDto.mansionFloorMax" type="hidden" value=""/>
+	                <input id="mansionPossessorExist" name="detailAreaInfoDto.mansionPossessorExist" type="hidden" value=""/>
+	                <input id="mansionPossessorNone" name="detailAreaInfoDto.mansionPossessorNone" type="hidden" value=""/>
+	                <input id="mansionDebtorFlg" name="detailAreaInfoDto.mansionDebtorFlg" type="hidden" value=""/>
+	                <input id="mansionAdminExpensesMin" name="detailAreaInfoDto.mansionAdminExpensesMin" type="hidden" value=""/>
+	                <input id="mansionAdminExpensesMax" name="detailAreaInfoDto.mansionAdminExpensesMax" type="hidden" value=""/>
+	                <input id="mansionOwnershipFlg" name="detailAreaInfoDto.mansionOwnershipFlg" type="hidden" value=""/>
+	                <input id="mansionSuperficiesFlg" name="detailAreaInfoDto.mansionSuperficiesFlg" type="hidden" value=""/>
+	                <input id="mansionLeaseFlg" name="detailAreaInfoDto.mansionLeaseFlg" type="hidden" value=""/>
+	                <input id="otherLandCls" name="detailAreaInfoDto.otherLandCls" type="hidden" value=""/>
+	                
+	                   
+	                
+	                <input id="otherLandAreaMin" name="detailAreaInfoDto.otherLandAreaMin" type="hidden" value=""/>
+	                <input id="otherLandAreaMax" name="detailAreaInfoDto.otherLandAreaMax" type="hidden" value=""/>
+		        
+		    </div>
+           
+		<!-- main content -->
+		<main id="bit__main" class="container-fluid mb-5">
+
+			<div class="bit__main_wrapper">
+				<!-- breadcrumb -->
+				<nav aria-label="breadcrumb" class="row">
+					<div class="col-12 px-0">
+						<ul class="bit__breadcrumb breadcrumb d-none d-sm-flex p-0">
+						        <!--   ホーム > 競売物件検索結果一覧 > 競売物件詳細
+                                       ホーム > 裁判所一覧 > 売却スケジュール＞ 競売物件検索結果一覧 ＞ 競売物件詳細
+                                       ホーム > トピックス一覧 > 売却スケジュール＞ 競売物件検索結果一覧 ＞ 競売物件詳細
+                                       ホーム ＞ 地域選択 ＞ 競売物件検索 ＞ 競売物件検索結果一覧 ＞ 競売物件詳細
+                                       売却スケジュール > 競売物件検索結果一覧 > 競売物件詳細-->
+                           
+                             
+                            
+                            
+                             <li class="breadcrumb-item"><a href="/app/top/pt001/h01">ホーム</a></li>
+                             <li class="breadcrumb-item"><a href="#" onclick="tranArea(&#39;property&#39;, &quot;03&quot;)">地域選択</a></li>
+                             <li class="breadcrumb-item"><a href="#" onclick="commonSubmit(&#39;SEARCH001&#39;)">競売物件検索</a></li>
+                             <li class="breadcrumb-item"><a href="#" onclick="commonSubmit(&#39;SEARCHRESULTS001&#39;)">競売物件検索結果一覧</a></li>
+                             <li class="breadcrumb-item active" aria-current="page">競売物件詳細</li>
+                            
+                            
+						</ul>
+					</div>
+				</nav>
+				
+        
+				<!-- imformation button -->
+				<div class="row mb-3">
+					<div class="col-12 px-0">
+						<h1 class="bit__headline_1 bit__headline_popover mb-0 py-1 px-2 align-items-baseline">
+	                            競売物件詳細
+							<a role="button" class="bit__information_btn btn"
+								data-toggle="popover"
+								data-content='◆検索結果<br>
+									システム上登録していない文字及び使用できない文字については，類似の文字を使用しており，正字ではない場合もあります。<br><br>
+									検索結果については，「現況調査報告書」を作成した時点のものです。<br>
+									所在地は，登記により表示しており，住居表示とは異なる場合があります。<br>
+									種別欄について，文字色を変えた記載はそれ以外の付加情報を表したものです。<br>
+									現況が登記上の記載と同じとき，及び表示する項目に該当する情報がないときは灰色表示となります。<br><br>
+									農地及び採草放牧地について買受申出が出来るのは，都道府県知事又は農業委員会等の交付した買受適格証明書を有する方に限られています。また，これらの方が最高価買受申出人等となったときは，売却決定期日までに，改めて都道府県知事等が交付する許可を証する書面または届出受理証明書を執行裁判所へ提出する必要があります。買受適格証明書の入手等については，その農地等の所在を管轄する都道府県事務所又は農業委員会等へお問い合わせください。<br><br>
+									参考交通は，所在地から直線距離約3km以内に位置する駅を基準に最大5件の沿線が表示されます。<br><br>
+									【アイコンについて】<br>
+                                <img src="../../common/images/icon_golf.png">：ゴルフ場が含まれる物件となります。<br>
+								<img src="../../common/images/icon_factory.png">：工場が含まれる物件となります。<br>
+								<img src="../../common/images/icon_inn.png">：宿泊施設が含まれる物件となります。'
+								tabindex="0">
+							</a>
+							
+						</h1>
+					</div>
+				</div>
+
+				<div class="row mb-4">
+					<div class="col-12 px-0 clearfix">
+						<div class="col-12 col-sm-7 float-sm-right mb-sm-2 px-0">
+							<div class="col-12 d-sm-inline px-0">
+								<span class="badge badge-primary bit__badge_tochi mr-2 p-1" >土地</span>
+								
+								
+								
+								<i></i>
+							</div>
+							<p class="bit__text_big col-12 d-sm-inline mb-2 px-0">東京地方裁判所立川支部　令和08年(ヌ)第12号</p>
+							
+						</div>
+						<div class="col-12 col-sm-5 float-sm-left mb-1 px-0 pr-sm-3 text-center">
+							<img src="/data/image/TAC_R08N00012_1_d.jpg" alt="詳細用画像" class="bit__image">
+						</div>
+						<div class="col-12 col-sm-7 float-sm-right px-0">
+							<div class="bit__syousai_text_kakaku_container col-12 d-sm-flex align-items-sm-center mx-0 px-0">
+								<div class="col-12 col-sm-7 mb-0 px-0 pr-sm-4 d-flex align-items-sm-center justify-content-between">
+									<p class="bit__text_small mb-0">売却基準価額</p>
+									<p class="bit__syousai_text_kakaku bit__text_orange font-weight-bold mb-0 text-right">5,750,000円</p>
+								</div>
+								<div class="col-12 col-sm-5 mb-0 px-0">
+									<div class="col-12 mb-0 px-0 d-flex justify-content-between">
+										<p class="bit__text_small mb-0">買受申出保証金</p>
+										<p class="bit__text_big font-weight-bold mb-0 text-right">1,150,000円</p>
+									</div>
+									<div class="col-12 mb-0 px-0 d-flex justify-content-between">
+										<p class="bit__text_small mb-0">買受可能価額</p>
+										<p class="bit__text_big font-weight-bold mb-0 text-right">4,600,000円</p>
+									</div>
+								</div>
+							</div>
+							<div class="mb-3">
+								<div class="form-contents">
+									<p class="bit__text_big mb-2">期間入札</p>
+									<div class="table table-borderless bit__multiHeadTable mb-3 mb-sm-2 text-nowrap">
+									
+											<div class="row m-0">
+												<div class="bit__multiHeadTable_th col-12 col-sm-3">公示開始日</div>
+												<div class="bit__multiHeadTable_td col-12 col-sm-3">令和08年06月26日</div>
+												<div class="bit__multiHeadTable_th col-12 col-sm-3">閲覧開始日</div>
+												<div class="bit__multiHeadTable_td col-12 col-sm-3">令和08年06月26日</div>
+											</div>
+											<div class="row m-0">
+												<div class="bit__multiHeadTable_th col-12 col-sm-3">入札期間</div>
+												<div class="bit__multiHeadTable_td col-12 col-sm-9" >令和08年07月15日 〜 令和08年07月22日</div>
+											</div>
+											<div class="row m-0">
+												<div class="bit__multiHeadTable_th col-12 col-sm-3">開札期日</div>
+												<div class="bit__multiHeadTable_td col-12 col-sm-3">令和08年07月28日</div>
+												<div class="bit__multiHeadTable_th col-12 col-sm-3">売却決定期日</div>
+												<div class="bit__multiHeadTable_td col-12 col-sm-3">令和08年08月12日</div>
+											</div>
+											
+		                                    
+			                                    <div class="row m-0">
+		                                            <div class="bit__multiHeadTable_th col-12 col-sm-3">特別売却期間</div>
+		                                            <div class="bit__multiHeadTable_td col-12 col-sm-9">令和08年07月29日 〜 令和08年07月31日</div>
+		                                        </div>
+	                                         
+		                               
+										
+
+									</div>
+								</div>
+							</div>
+
+
+						</div>
+					</div>
+				</div>
+
+				<div class="bit__download">
+	                <div class="row mb-sm-3 py-sm-4">
+	                   
+	                    <div class="col-6 col-sm-7 pt-2 pr-1 pr-sm-0 pl-2 pl-sm-5 order-1 pb-1 pb-sm-3">
+	                        <button type="button" class="bit__btn_primary btn btn-primary col-12 py-3" id ="threeSetPDF">
+								<span class="bit__download_btn_font">3点セット</span>のダウンロード
+							</button>
+	                    </div>
+	                    <div class="col-12 col-sm-7 pr-sm-0 pl-sm-5 order-3">
+	                        <p class="bit__text_normal mb-2 ml-sm-3 mr-sm-3" >※3点セット（物件明細書，現況調査報告書及び評価書等）をPDFファイル（2.24MB）でダウンロードすることができます。</p>
+	                    </div>
+	                    
+	                    
+	                    <div class="col-6 col-sm-5 pt-2 pr-2 pr-sm-5 pl-1 pl-sm-3 order-2 pb-1 pb-sm-3">
+							<p class="mb-0">
+								<a class="bit__btn_secondary btn btn-secondary col-12 py-3" href="/app/../info/info_31131.html" target="_blank">
+									<span class="bit__download_btn_font">お問い合わせ</span>
+									<span class="bit__download_btn_sp_none">はこちら</span>
+								</a>
+							</p>
+							
+						</div>
+	                </div>
+	            </div>
+
+	            <div class="bit__tab_wrapper row mb-3">
+					<div class="col-12 px-0">
+						<ul class="bit__tab nav nav-tabs col-12 flex-nowrap mb-3 px-0" role="tablist">
+							<li class="bit__tab_item nav-item text-center col-6 col-sm-3 px-0">
+								<a class="bit__tab_item_link nav-link border-top-0 border-right-0 border-left-0 py-2 py-sm-3 px-1 active" id="bloc-tab" data-toggle="tab" href="#bloc" role="tab" aria-controls="bloc" aria-selected="true" onclick="setSetailsTabFromKbn('1')">物件詳細</a>
+							</li>
+							<li class="bit__tab_item nav-item text-center col-6 col-sm-3 px-0">
+								<a class="bit__tab_item_link nav-link border-top-0 border-right-0 border-left-0 py-2 py-sm-3 px-1" id="chiiki-tab" data-toggle="tab" href="#chiiki" role="tab" aria-controls="chiiki" aria-selected="true" onclick="setSetailsTabFromKbn('2')">周辺情報</a>
+							</li>
+						</ul>
+						<div class="tab-content" id="myTabContent">
+							<div class="tab-pane fade px-3 show active" id="bloc" role="tabpanel" aria-labelledby="bloc-tab">
+	                            <div class="mb-3" >
+	                                <div class="form-contents">
+	                                    <div class="row mb-2 mx-0">
+	                                        <div class="col-12 px-0">
+	                                            <p class="bit__text_big mb-0">1．土地</p>
+	                                        </div>
+	                                    </div>
+	                                    <div class="table table-borderless bit__paragraphBreaksTable mb-0">
+	                                        <div class="row m-0">
+	                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3" >種別</div>
+	                                            <div  class="bit__paragraphBreaksTable_td col-8 col-sm-9"  >
+	                                                <span >土地</span>
+	                                                <span  class="bit__text_orange"></span>
+	                                                 
+	                                                <span class="bit__text_red bit__text_orange"></span>
+	                                            </div>
+	                                        </div>
+	                                        <div class="row m-0">
+	                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">物件番号</div>
+	                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-9">1</div>
+	                                        </div>
+	                                        <div class="row m-0">
+	                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">所在地</div>
+	                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-9">
+	                                                 
+	                                                     <span>青梅市河辺町二丁目</span>
+	                                                 
+	                                                 
+	                                                     <span>１０３７番１</span>
+	                                                 
+	                                            </div>
+	                                        </div>
+	                                         
+		                                        <div class="row m-0">
+		                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">地目（登記）</div>
+		                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-3">山林</div>
+		                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">地目（現況）</div>
+		                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-3">雑種地</div>
+		                                        </div>
+
+		                                        <div class="row m-0">
+		                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">土地面積（登記）</div>
+		                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-3">
+		                                                
+		                                                   <span>４７７m<sup>2</sup></span>
+		                                                 
+		                                            </div>
+		                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">土地面積（現況）</div>
+		                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-3 bit__paragraphBreaksTable_td_disabled">
+		                                                 
+		                                            </div>
+		                                        </div>
+		                                        <div class="row m-0">
+		                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">用途地域</div>
+		                                            
+			                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-3">
+			                                                 
+					                                             <span>準工業地域</span>
+				                                             
+				                                             </div>
+		                                            
+		                                            
+		                                            
+			                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">土地の利用状況</div>
+			                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-3">更地</div>
+		                                            
+		                                        </div>
+	                                        
+	                                        
+		                                        <div class="row m-0">
+		                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">建ぺい率</div>
+		                                            <div class="bit__paragraphBreaksTable_td  col-8 col-sm-3">
+	                                                        
+	                                                            <span>60%</span>
+	                                                        
+	                                                        </div>
+		                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">容積率</div>
+		                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-3">
+	                                                        
+	                                                            <span>200%</span>
+	                                                        
+	                                                        </div>
+		                                        </div>
+	                                        
+	                                        
+	                                        
+	                                        
+	                                        
+	                                        
+	                                        
+		                                   <div class="row m-0">
+		                                       <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">持分</div>
+		                                       <div class="bit__paragraphBreaksTable_td col-8 col-sm-9 bit__paragraphBreaksTable_td_disabled">
+	                                               
+	                                          </div>
+		                                   </div>
+	                                       
+	                                        
+	                                    </div>
+	                                    </div>
+	                                </div>
+	                            <div class="mb-3" >
+	                                <div class="form-contents">
+	                                    <div class="row mb-2 mx-0">
+	                                        <div class="col-12 px-0">
+	                                            <p class="bit__text_big mb-0">2．土地</p>
+	                                        </div>
+	                                    </div>
+	                                    <div class="table table-borderless bit__paragraphBreaksTable mb-0">
+	                                        <div class="row m-0">
+	                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3" >種別</div>
+	                                            <div  class="bit__paragraphBreaksTable_td col-8 col-sm-9"  >
+	                                                <span >土地</span>
+	                                                <span  class="bit__text_orange"></span>
+	                                                 
+	                                                <span class="bit__text_red bit__text_orange"></span>
+	                                            </div>
+	                                        </div>
+	                                        <div class="row m-0">
+	                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">物件番号</div>
+	                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-9">2</div>
+	                                        </div>
+	                                        <div class="row m-0">
+	                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">所在地</div>
+	                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-9">
+	                                                 
+	                                                     <span>青梅市河辺町二丁目</span>
+	                                                 
+	                                                 
+	                                                     <span>１０３５番１１</span>
+	                                                 
+	                                            </div>
+	                                        </div>
+	                                         
+		                                        <div class="row m-0">
+		                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">地目（登記）</div>
+		                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-3">宅地</div>
+		                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">地目（現況）</div>
+		                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-3">雑種地</div>
+		                                        </div>
+
+		                                        <div class="row m-0">
+		                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">土地面積（登記）</div>
+		                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-3">
+		                                                
+		                                                   <span>２９．７０m<sup>2</sup></span>
+		                                                 
+		                                            </div>
+		                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">土地面積（現況）</div>
+		                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-3 bit__paragraphBreaksTable_td_disabled">
+		                                                 
+		                                            </div>
+		                                        </div>
+		                                        <div class="row m-0">
+		                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">用途地域</div>
+		                                            
+			                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-3">
+			                                                 
+					                                             <span>準工業地域</span>
+				                                             
+				                                             </div>
+		                                            
+		                                            
+		                                            
+			                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">土地の利用状況</div>
+			                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-3">更地</div>
+		                                            
+		                                        </div>
+	                                        
+	                                        
+		                                        <div class="row m-0">
+		                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">建ぺい率</div>
+		                                            <div class="bit__paragraphBreaksTable_td  col-8 col-sm-3">
+	                                                        
+	                                                            <span>60%</span>
+	                                                        
+	                                                        </div>
+		                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">容積率</div>
+		                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-3">
+	                                                        
+	                                                            <span>200%</span>
+	                                                        
+	                                                        </div>
+		                                        </div>
+	                                        
+	                                        
+	                                        
+	                                        
+	                                        
+	                                        
+	                                        
+		                                   <div class="row m-0">
+		                                       <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">持分</div>
+		                                       <div class="bit__paragraphBreaksTable_td col-8 col-sm-9 bit__paragraphBreaksTable_td_disabled">
+	                                               
+	                                          </div>
+		                                   </div>
+	                                       
+	                                        
+	                                    </div>
+	                                    </div>
+	                                </div>
+	                            <div class="mb-3" >
+	                                <div class="form-contents">
+	                                    <div class="row mb-2 mx-0">
+	                                        <div class="col-12 px-0">
+	                                            <p class="bit__text_big mb-0">3．土地</p>
+	                                        </div>
+	                                    </div>
+	                                    <div class="table table-borderless bit__paragraphBreaksTable mb-0">
+	                                        <div class="row m-0">
+	                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3" >種別</div>
+	                                            <div  class="bit__paragraphBreaksTable_td col-8 col-sm-9"  >
+	                                                <span >土地</span>
+	                                                <span  class="bit__text_orange"></span>
+	                                                 
+	                                                <span class="bit__text_red bit__text_orange"></span>
+	                                            </div>
+	                                        </div>
+	                                        <div class="row m-0">
+	                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">物件番号</div>
+	                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-9">3</div>
+	                                        </div>
+	                                        <div class="row m-0">
+	                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">所在地</div>
+	                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-9">
+	                                                 
+	                                                     <span>青梅市河辺町二丁目</span>
+	                                                 
+	                                                 
+	                                                     <span>１０３５番４</span>
+	                                                 
+	                                            </div>
+	                                        </div>
+	                                         
+		                                        <div class="row m-0">
+		                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">地目（登記）</div>
+		                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-3">宅地</div>
+		                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">地目（現況）</div>
+		                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-3">雑種地</div>
+		                                        </div>
+
+		                                        <div class="row m-0">
+		                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">土地面積（登記）</div>
+		                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-3">
+		                                                
+		                                                   <span>１０．１１m<sup>2</sup></span>
+		                                                 
+		                                            </div>
+		                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">土地面積（現況）</div>
+		                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-3 bit__paragraphBreaksTable_td_disabled">
+		                                                 
+		                                            </div>
+		                                        </div>
+		                                        <div class="row m-0">
+		                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">用途地域</div>
+		                                            
+			                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-3">
+			                                                 
+					                                             <span>準工業地域</span>
+				                                             
+				                                             </div>
+		                                            
+		                                            
+		                                            
+			                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">土地の利用状況</div>
+			                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-3">更地</div>
+		                                            
+		                                        </div>
+	                                        
+	                                        
+		                                        <div class="row m-0">
+		                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">建ぺい率</div>
+		                                            <div class="bit__paragraphBreaksTable_td  col-8 col-sm-3">
+	                                                        
+	                                                            <span>60%</span>
+	                                                        
+	                                                        </div>
+		                                            <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">容積率</div>
+		                                            <div class="bit__paragraphBreaksTable_td col-8 col-sm-3">
+	                                                        
+	                                                            <span>200%</span>
+	                                                        
+	                                                        </div>
+		                                        </div>
+	                                        
+	                                        
+	                                        
+	                                        
+	                                        
+	                                        
+	                                        
+		                                   <div class="row m-0">
+		                                       <div class="bit__paragraphBreaksTable_th col-4 col-sm-3">持分</div>
+		                                       <div class="bit__paragraphBreaksTable_td col-8 col-sm-9 bit__paragraphBreaksTable_td_disabled">
+	                                               
+	                                          </div>
+		                                   </div>
+	                                       
+	                                        
+	                                    </div>
+	                                    </div>
+	                                </div>
+		                            
+	                            </div>
+							<div class="tab-pane fade px-3" id="chiiki" role="tabpanel" aria-labelledby="chiiki-tab">
+								<div class="row mx-0 mb-2">
+									<div class="col-12 px-0">
+										<p class="bit__text_big mb-0">アクセスマップ</p>
+									</div>
+								</div>
+								<div class="row mx-0 mb-2">
+									<div style="height: 200px;" class="col-12 px-0 w-100" id="ZMap"  >
+
+									</div>
+								</div>
+								<div class="row mx-0 mb-2">
+									<div class="col-12 px-0">
+										<p class="bit__text_small mb-0">【ご注意】当地図は，実際の物件所在地を表示していない場合があります。</p>
+									</div>
+								</div>
+								<div class="mb-3">
+									<div class="form-contents">
+										<div class="table table-borderless bit__multiHeadTable mb-3 mb-sm-2">
+											<div class="row m-0">
+												<div class="bit__multiHeadTable_th col-12 col-sm-3" >評価書上の交通</div>
+												<div class="bit__multiHeadTable_td col-12 col-sm-9">ＪＲ青梅線「河辺」駅　略南方　約７００ｍ（道路距離）　徒歩約９分<br/><br/></div>
+
+											</div>
+											<div class="row m-0">
+												<div class="bit__multiHeadTable_th col-12 col-sm-3" >参考交通</div>
+												
+												 
+	                                                 <div class="bit__multiHeadTable_td col-12 col-sm-9">ＪＲ青梅線　東青梅駅　南東方　１．５９ｋｍ<br/><br/><br/><br/></div>
+	                                            
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+				    </div>
+				</div>
+
+	            <div class="row mb-2 mb-sm-3">
+					<div class="col-12 px-0">
+						<div class="alert alert-danger bit__alert-danger p-3 p-sm-4 mb-0" role="alert">
+							<span
+								class="bit__alert-danger_heading mb-2 mb-sm-3">注意事項</span><br>本詳細情報画面の内容については，必ず，３点セット（物件明細書，現況調査報告書及び評価書等）をダウンロードの上，ご確認ください（民事執行法６３条２項１号の申出がある場合等があります。）。本システムからダウンロードした「現況調査報告書」及び「評価書」に引用されている写真，資料及び図面は，本システム上は，添付されていない場合があります。
+						</div>
+					</div>
+				</div>
+				<div class="row mb-2">
+					<div class="col-12 px-0">
+						<p class="text-center">
+							<button type="button" class="bit__btn_primary bit__close_btn_font btn btn-primary col-12 col-sm-4 py-3"  onclick="window.open('about:blank','_self').close();">閉じる</button>
+						</p>
+					</div>
+				</div>
+				<div class="bit__pageTop">
+					<a href="#top"><i class="bit__pageTop_arrow"></i></a>
+				</div>
+
+			</div>
+			 </th:block>
+		</main>
+
+    </form>
+	<!-- footer -->
+	<footer class="container-fluid px-0">
+	<div>
+		<div class="bit__footer_inner">
+	<div id="bit__footer_blankSpace" class="row">
+
+		<!-- footer_left -->
+		<div
+			class="col-0 col-sm-4 pl-0 pr-0 d-none d-sm-flex align-items-center">
+			<a href="/app/top/pt001/h01"> <img class="col-12 pl-0 pr-4"
+				src="../../common/images/logo.png" alt="BIT　不動産競売物件情報サイト">
+			</a>
+		</div>
+		<!-- footer_right -->
+		<div
+			class="bit__footer_right col-12 col-sm-8 pl-0 pr-0 d-flex flex-column">
+			<!-- inner_top -->
+			<div class="bit__footer_top mb-sm-3">
+				<!-- footer_linkbox -->
+				<ul class="d-flex flex-column flex-sm-row m-0 mt-sm-3 mb-sm-3 p-0">
+					<li class="ml-sm-3"><a href="/contact.html" class="d-block d-sm-inline"><i
+							class="bit__icon_footerArrow mr-2 mr-sm-0"></i>お問い合わせ</a></li>
+					<li class="ml-sm-5"><a href="/backnumber/index.html" class="d-block d-sm-inline"><i
+							class="bit__icon_footerArrow mr-2 mr-sm-0"></i>トピックス一覧</a></li>
+					<li class="ml-sm-5"><a href="/policy/site_policy.html" class="d-block d-sm-inline"><i
+							class="bit__icon_footerArrow mr-2 mr-sm-0"></i>サイトのご利用条件</a></li>
+				</ul>
+			</div>
+
+			<!-- inner_bottom -->
+			<div class="bit__footer_bottom d-flex flex-column flex-sm-row">
+				<!-- footer_linkbox1 -->
+				<div class="bit__footer_bottomlink d-flex flex-column ml-sm-2">
+					<span
+						class="bit__footer_collapseHeader mb-sm-1 d-block d-sm-inline collapsed"
+						data-toggle="collapse" data-target="#collapse10"
+						aria-expanded="false" aria-controls="collapse10" role="button">競売物件</span>
+					<ul class="ml-2 ml-sm-0 pl-0 collapse d-sm-block" id="collapse10">
+						<li><a href="#" onclick="tranArea(&#39;property&#39;,&#39;&#39;);"><i
+								class="bit__icon_footerArrow_01 mr-2"></i>競売物件情報の検索</a></li>
+					</ul>
+					<span
+						class="bit__footer_collapseHeader mb-sm-1 d-block d-sm-inline collapsed"
+						data-toggle="collapse" data-target="#collapse20"
+						aria-expanded="false" aria-controls="collapse20" role="button">売却物件</span>
+					<ul class="ml-2 ml-sm-0 pl-0 collapse d-sm-block" id="collapse20">
+						<li><a href="#" onclick="tranArea(&#39;result&#39;,&#39;&#39;);"><i
+								class="bit__icon_footerArrow_01 mr-2"></i>売却結果の照会</a></li>
+					</ul>
+					<span
+						class="bit__footer_collapseHeader mb-sm-1 d-block d-sm-inline collapsed"
+						data-toggle="collapse" data-target="#collapse30"
+						aria-expanded="false" aria-controls="collapse30" role="button">過去データ</span>
+					<ul class="ml-2 ml-sm-0 pl-0 collapse d-sm-block" id="collapse30">
+						<li><a href="#" onclick="tranArea(&#39;past&#39;,&#39;&#39;);"><i
+								class="bit__icon_footerArrow_01 mr-2"></i>過去データの照会</a></li>
+					</ul>
+				</div>
+				<!-- footer_linkbox2 -->
+				<div class="bit__footer_bottomlink d-flex flex-column ml-sm-5">
+					<span
+						class="bit__footer_collapseHeader mb-sm-1 d-block d-sm-inline collapsed"
+						data-toggle="collapse" data-target="#collapse40"
+						aria-expanded="false" aria-controls="collapse40" role="button">手続案内</span>
+					<ul class="ml-2 ml-sm-0 pl-0 collapse d-sm-block" id="collapse40">
+						<li class="mb-2 mb-sm-0"><a href="/guidance/guidance01.html"><i
+								class="bit__icon_footerArrow_01 mr-2"></i>不動産執行手続の流れ</a></li>
+						<li class="mb-2 mb-sm-0"><a href="/guidance/guidance02.html"><i
+								class="bit__icon_footerArrow_01 mr-2"></i>売却手続の流れ</a></li>
+						<li class="mb-2 mb-sm-0"><a href="/guidance/guidance03/index.html"><i
+								class="bit__icon_footerArrow_01 mr-2"></i>入札等の手続について</a></li>
+						<li class="mb-2 mb-sm-0"><a href="/guidance/guidance04.html"><i
+								class="bit__icon_footerArrow_01 mr-2"></i>引渡命令手続の流れ</a></li>
+					</ul>
+					<span
+						class="bit__footer_collapseHeader mb-sm-1 d-block d-sm-inline collapsed"
+						data-toggle="collapse" data-target="#collapse50"
+						aria-expanded="false" aria-controls="collapse50" role="button">スケジュール</span>
+					<ul class="ml-2 ml-sm-0 pl-0 collapse d-sm-block" id="collapse50">
+						<li class="mb-2 mb-sm-0"><a href="/schedule/index.html"><i
+								class="bit__icon_footerArrow_01 mr-2"></i>売却スケジュールの照会</a></li>
+					</ul>
+					<span
+						class="bit__footer_collapseHeader mb-sm-1 d-block d-sm-inline collapsed"
+						data-toggle="collapse" data-target="#collapse60"
+						aria-expanded="false" aria-controls="collapse60" role="button">用語集</span>
+					<ul class="ml-2 ml-sm-0 pl-0 collapse d-sm-block" id="collapse60">
+						<li class="mb-2 mb-sm-0"><a href="/words/index.html"><i
+								class="bit__icon_footerArrow_01 mr-2"></i>用語集</a></li>
+					</ul>
+					<span
+						class="bit__footer_collapseHeader mb-sm-1 d-block d-sm-inline collapsed"
+						data-toggle="collapse" data-target="#collapse70"
+						aria-expanded="false" aria-controls="collapse70" role="button">お知らせ</span>
+					<ul class="ml-2 ml-sm-0 pl-0 collapse d-sm-block" id="collapse70">
+						<li class="mb-2 mb-sm-0"><a href="/info/index.html"><i
+								class="bit__icon_footerArrow_01 mr-2"></i>地方裁判所からのお知らせ</a></li>
+					</ul>
+				</div>
+				<!-- footer_linkbox3 -->
+				<div class="bit__footer_bottomlink d-flex flex-column ml-sm-5">
+					<span
+						class="bit__footer_collapseHeader mb-sm-1 d-block d-sm-inline collapsed"
+						data-toggle="collapse" data-target="#collapse80"
+						aria-expanded="false" aria-controls="collapse80" role="button">使い方</span>
+					<ul class="ml-2 ml-sm-0 pl-0 collapse d-sm-block" id="collapse80">
+						<li class="mb-2 mb-sm-0"><a href="/help/help01/index.html"><i
+								class="bit__icon_footerArrow_01 mr-2"></i>競売物件情報の検索</a></li>
+						<li class="mb-2 mb-sm-0"><a href="/help/help02/index.html"><i
+								class="bit__icon_footerArrow_01 mr-2"></i>競売物件情報の検索（ブロックから探す）</a></li>
+						<li class="mb-2 mb-sm-0"><a href="/help/help03/index.html"><i
+								class="bit__icon_footerArrow_01 mr-2"></i>競売物件情報の検索（取下げ等の検索）</a></li>
+						<li class="mb-2 mb-sm-0"><a href="/help/help04/index.html"><i
+								class="bit__icon_footerArrow_01 mr-2"></i>売却結果の照会</a></li>
+						<li class="mb-2 mb-sm-0"><a href="/help/help05/index.html"><i
+								class="bit__icon_footerArrow_01 mr-2"></i>過去データの照会</a></li>
+						<li class="mb-2 mb-sm-0"><a href="/help/help07/index.html"><i
+								class="bit__icon_footerArrow_01 mr-2"></i>売却スケジュールの照会</a></li>
+						<li class="mb-2 mb-sm-0"><a href="/help/help08/index.html"><i
+								class="bit__icon_footerArrow_01 mr-2"></i>用語集</a></li>
+						<li class="mb-2 mb-sm-0"><a href="/help/help09/index.html"><i
+								class="bit__icon_footerArrow_01 mr-2"></i>手続案内</a></li>
+						<li class="mb-2 mb-sm-0"><a href="/help/help10/index.html"><i
+								class="bit__icon_footerArrow_01 mr-2"></i>地方裁判所からのお知らせ</a></li>
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+	</div>
+	
+	<script src="../../common/lib/jquery/jquery-3.5.1.min.js"></script>
+	<script
+		src="../../common/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+	<script src="../../common/js/main.js"></script>
+	<script src="../../common/js/common.js"></script>
+
+</footer>
+	<script src="/app/property/syosai.js"></script>
+	<script src="https://bizapis.mapion.co.jp/maps/api/js?key=bit_api&amp;v=0.7"></script>
+	<script type="text/javascript">
+		function tranLink() {
+			var courtId = "31131";
+			window.open(location.protocol + '//' + location.host + '/info/info_'+ courtId +'.html','_blank');
+		}
+	</script>
+</body>
+
+</html>

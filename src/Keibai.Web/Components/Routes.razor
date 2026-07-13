@@ -1,0 +1,12 @@
+@* RCL router. Pages use the RCL's own layout (KeibaiLayout), never a host layout. *@
+<Router AppAssembly="@typeof(Routes).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.KeibaiLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="@typeof(Layout.KeibaiLayout)">
+            <p>Not found.</p>
+        </LayoutView>
+    </NotFound>
+</Router>

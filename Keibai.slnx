@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Keibai/Keibai.csproj" />
+    <Project Path="src/Keibai.Core/Keibai.Core.csproj" />
+    <Project Path="src/Keibai.Web/Keibai.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Keibai.Tests/Keibai.Tests.csproj" />
+    <Project Path="tests/Keibai.Web.Tests/Keibai.Web.Tests.csproj" />
+  </Folder>
+</Solution>

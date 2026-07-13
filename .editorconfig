@@ -1,0 +1,7 @@
+root = true
+
+# Unnecessary using directives fail the build (IDE0005). Reported at build time only for projects
+# that set EnforceCodeStyleInBuild + GenerateDocumentationFile — see Directory.Build.props, which
+# scopes that to the OffMarket* projects (the legacy WebApp is frozen reference code).
+[*.cs]
+dotnet_diagnostic.IDE0005.severity = error

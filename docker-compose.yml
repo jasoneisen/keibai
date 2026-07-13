@@ -1,0 +1,21 @@
+# Postgres for Keibai. Uses imresamu/postgis (arm64-friendly; PostGIS unused now but future-proofs
+# geo search). The keibai database is created by POSTGRES_DB on first boot.
+services:
+  db:
+    image: imresamu/postgis:16-3.4
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: keibai
+    ports:
+      - "5432:5432"
+    volumes:
+      - keibai-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  keibai-pgdata:

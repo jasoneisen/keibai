@@ -1,0 +1,15 @@
+<Project>
+
+  <!-- Mirrors offmarket.deals' Directory.Build.props pattern, scoped to the Keibai* projects so the
+       style gate travels with the merge artifact. EnforceCodeStyleInBuild surfaces IDE style
+       diagnostics (severities from .editorconfig — IDE0005 unnecessary usings as error) at build.
+       GenerateDocumentationFile is required for IDE0005 to be reported at build at all
+       (https://github.com/dotnet/roslyn/issues/41640); doc-completeness rules (CS1591, CS1573) are
+       not part of that goal so they stay non-errors. -->
+  <PropertyGroup Condition="$(MSBuildProjectName.StartsWith('Keibai'))">
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
+  </PropertyGroup>
+
+</Project>
