@@ -68,17 +68,21 @@ public static class KeibaiServiceCollectionExtensions
             sp.GetRequiredService<TimeProvider>()));
         services.AddTransient<BitRateLimitingHandler>();
 
-        // The BIT HttpClient: honest UA + base address, the rate-limit/kill-switch handler, and Polly
-        // exponential backoff (max retries from options; a block short-circuits before retry).
+        // The BIT HttpClient: honest UA + base address, Polly exponential backoff OUTSIDE the
+        // rate-limit/kill-switch handler — registration order puts Polly outermost, so every retry
+        // re-enters the limiter and is itself spaced ≥ MinRequestInterval (and re-checks the
+        // kill-switch). HttpClient.Timeout is infinite: the real per-attempt timeout lives in
+        // BitRateLimitingHandler, measured after the rate-limit slot is acquired, so time queued
+        // behind the global gate can never cancel a request (see BitOptions.RequestTimeout).
         services.AddHttpClient<BitClient>((sp, http) =>
             {
                 var options = sp.GetRequiredService<IOptions<BitOptions>>().Value;
                 http.BaseAddress = new Uri(options.BaseUrl);
                 http.DefaultRequestHeaders.UserAgent.ParseAdd(options.UserAgent);
-                http.Timeout = TimeSpan.FromSeconds(120);
+                http.Timeout = Timeout.InfiniteTimeSpan;
             })
-            .AddHttpMessageHandler<BitRateLimitingHandler>()
-            .AddPolicyHandler((sp, _) => BitRetryPolicy.Create(sp));
+            .AddPolicyHandler((sp, _) => BitRetryPolicy.Create(sp))
+            .AddHttpMessageHandler<BitRateLimitingHandler>();
 
         return services;
     }

@@ -27,6 +27,14 @@ public sealed class BitOptions
     /// <summary>Max Polly retries before parking the work item and alerting.</summary>
     public int MaxRetries { get; set; } = 3;
 
+    /// <summary>
+    /// Timeout for a single BIT request, measured from AFTER the rate-limit slot is acquired. The
+    /// HttpClient's own Timeout is infinite: it would otherwise count time spent queued behind the
+    /// global 1-req/3s gate, cancelling every request whose queue wait exceeded it once a sweep's
+    /// backlog grew past ~40 requests.
+    /// </summary>
+    public TimeSpan RequestTimeout { get; set; } = TimeSpan.FromSeconds(120);
+
     /// <summary>Prefectures whose PDFs to archive (Phase 2). Empty = all.</summary>
     public List<string> ArchivePrefectures { get; set; } = [];
 }

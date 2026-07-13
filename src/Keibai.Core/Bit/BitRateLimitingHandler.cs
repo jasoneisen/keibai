@@ -31,7 +31,21 @@ public sealed class BitRateLimitingHandler : DelegatingHandler
         }
 
         await _limiter.AcquireAsync(cancellationToken).ConfigureAwait(false);
-        return await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
+
+        // The per-attempt timeout starts HERE, after the slot is acquired — queue wait must not count
+        // (HttpClient.Timeout is infinite for this client). Surfaced as HttpRequestException so the
+        // outer Polly policy treats a genuine network stall as transient and retries it.
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(_options.CurrentValue.RequestTimeout);
+        try
+        {
+            return await base.SendAsync(request, cts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new HttpRequestException(
+                $"BIT request timed out after {_options.CurrentValue.RequestTimeout}.", ex);
+        }
     }
 }
 
