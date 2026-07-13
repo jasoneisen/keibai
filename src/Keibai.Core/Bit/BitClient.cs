@@ -114,7 +114,18 @@ public sealed class BitClient
         using var resp = await SendAsync(req, ct).ConfigureAwait(false);
         var bytes = await resp.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
         await CaptureAsync(path, resp, bytes, ct).ConfigureAwait(false);
-        return Encoding.UTF8.GetString(bytes);
+        var html = Encoding.UTF8.GetString(bytes);
+
+        // BIT serves its generic エラー page as HTTP 200. That is an invalid REQUEST, never an empty
+        // result — parsing it as "0 rows" silently dropped all of Hokkaidō (prefecturesId=01 instead
+        // of the 91–94 pseudo-codes). Raw bytes are already captured above for the post-mortem.
+        if (BitErrorPage.IsErrorPage(html))
+        {
+            throw new BitErrorPageException(
+                $"BIT returned its エラー page for {path} — invalid request (bad prefecturesId/block?), not an empty result.");
+        }
+
+        return html;
     }
 
     private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage req, CancellationToken ct)

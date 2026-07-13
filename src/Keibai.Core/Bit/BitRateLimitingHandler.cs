@@ -54,3 +54,18 @@ public sealed class IngestionDisabledException(string message) : InvalidOperatio
 
 /// <summary>Thrown when BIT returns a block-page/403/429 — stop and alert, never retry around it.</summary>
 public sealed class BitBlockedException(string message) : Exception(message);
+
+/// <summary>
+/// Thrown when BIT answers with its generic エラー page (served as HTTP 200). It means the request
+/// itself was invalid — e.g. a bad <c>prefecturesId</c>/block combination — and must surface as a
+/// failure. Parsing it as "zero results" silently swallowed all of Hokkaidō once.
+/// </summary>
+public sealed class BitErrorPageException(string message) : Exception(message);
+
+/// <summary>Detects BIT's generic エラー page.</summary>
+public static class BitErrorPage
+{
+    /// <summary>True when the HTML is BIT's エラー page rather than a real (possibly empty) result.</summary>
+    public static bool IsErrorPage(string html) =>
+        html.Contains("<title>エラー", StringComparison.Ordinal);
+}

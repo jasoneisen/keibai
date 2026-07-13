@@ -66,13 +66,36 @@ form (`searchareaselectForm`, ~70 top-level inputs + a `detailAreaInfoDto.*` sub
 
 | field | meaning |
 |---|---|
-| `blockCls` | region block 01–09 |
-| `prefecturesId` | JIS prefecture code `01`–`47` (Tokyo = `13`) |
+| `blockCls` | region block 01–09 (see the block table below — BIT's own grouping, NOT the standard 地方 scheme) |
+| `prefecturesId` | prefecture search code: JIS `02`–`47` (Tokyo = `13`), **but NOT `01`** — Hokkaidō is split into four district-court pseudo-codes `91` 札幌 / `92` 函館 / `93` 旭川 / `94` 釧路 (from block 01's `prefecturesCondition` select, verified live 2026-07-13). `prefecturesId=01` returns the エラー page. |
 | `searchType` | **`1` = prefecture-level search, `2` = block/all-area** |
 | `saleCls` (checkbox ×4) | property type: 1 土地 / 2 戸建 / 3 マンション / 4 その他 |
 | `saleClsList` | comma-joined selected types, e.g. `1,2,3,4` |
 | `municipalityId`, `areaIdList` | optional narrowing to city/ward |
 | `saleStandardAmountCls` + `...TextMin/Max` | 売却基準価額 range filter |
+
+**Region blocks** (from the top-page map's `tranAreaMap('NN')` areas; prefecture membership from
+each block's condition-page `prefecturesCondition` options, blocks 01/04/05/06 verified live
+2026-07-13):
+
+| blockCls | blockName | prefecturesId |
+|---|---|---|
+| 01 | 北海道 | 91, 92, 93, 94 (札幌/函館/旭川/釧路 district pseudo-codes) |
+| 02 | 東北 | 02–07 |
+| 03 | 関東 | 08–14 |
+| 04 | 北陸・甲信越 | 15–20 |
+| 05 | 東海 | 21–24 |
+| 06 | 近畿 | 25–30 |
+| 07 | 中国 | 31–35 |
+| 08 | 四国 | 36–39 |
+| 09 | 九州・沖縄 | 40–47 |
+
+**エラー page**: an invalid request (e.g. `prefecturesId=01`, or presumably a stale session flow)
+returns HTTP **200** with `<title>エラー | BIT 不動産競売物件情報サイト</title>` (~2.5 KB,
+fixture `error_page.html`). It contains neither listing rows nor the no-results marker, so it MUST
+be detected explicitly (`BitErrorPage.IsErrorPage` → `BitErrorPageException`) — parsing it as
+"0 items" silently drops the whole region. A genuinely empty prefecture (e.g. Shimane on
+2026-07-13) returns the normal 結果一覧 page with zero rows.
 
 The inline JS defines the submit targets:
 - `tranAllAreaSearch()` → sets action `/app/areaselect/ps002/h05`, submits (**this is the search**).
