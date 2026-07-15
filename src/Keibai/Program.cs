@@ -135,6 +135,48 @@ app.MapGet("/jp/doc/{courtId}/{saleUnitId}/{sha}", async (
     return pdf is null ? Results.NotFound() : Results.File(pdf.Bytes, pdf.ContentType, pdf.FileName);
 });
 
+// --- Phase 3 write actions (plain-form POST + Post-Redirect-Get; static-SSR friendly) ---
+// Antiforgery is disabled on these: this is a single-operator personal app and the shared-password gate
+// is the real guard. `return` is validated to a local path to avoid open redirects.
+static string LocalReturn(string? ret, string fallback) =>
+    !string.IsNullOrWhiteSpace(ret) && ret.StartsWith('/') && !ret.StartsWith("//", StringComparison.Ordinal)
+        ? ret
+        : fallback;
+
+// Toggle a property's watchlist star.
+app.MapPost("/jp/watch", async (HttpContext http, IWatchlist watchlist, CancellationToken ct) =>
+{
+    var form = await http.Request.ReadFormAsync(ct);
+    var id = form["id"].ToString();
+    if (!string.IsNullOrWhiteSpace(id))
+    {
+        await watchlist.ToggleAsync(id, ct);
+    }
+
+    return Results.Redirect(LocalReturn(form["return"].ToString(), "/jp"));
+}).DisableAntiforgery();
+
+// Save the current search (the filter is carried in THIS request's query string; the name in the body).
+app.MapPost("/jp/search/save", async (HttpContext http, IWatchlist watchlist, CancellationToken ct) =>
+{
+    var form = await http.Request.ReadFormAsync(ct);
+    await watchlist.SaveSearchAsync(form["name"].ToString(), SearchQueryString.Parse(http.Request.Query), ct);
+    return Results.Redirect(LocalReturn(form["return"].ToString(), "/jp/watchlist"));
+}).DisableAntiforgery();
+
+// Delete a saved search.
+app.MapPost("/jp/search/delete", async (HttpContext http, IWatchlist watchlist, CancellationToken ct) =>
+{
+    var form = await http.Request.ReadFormAsync(ct);
+    var id = form["id"].ToString();
+    if (!string.IsNullOrWhiteSpace(id))
+    {
+        await watchlist.DeleteSavedSearchAsync(id, ct);
+    }
+
+    return Results.Redirect(LocalReturn(form["return"].ToString(), "/jp/watchlist"));
+}).DisableAntiforgery();
+
 app.MapStaticAssets();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
