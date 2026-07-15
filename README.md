@@ -69,7 +69,15 @@ curl -X POST http://localhost:5199/results/backfill/31111   # one court's ~3yr �
 curl -X POST http://localhost:5199/results/backfill-all     # nationwide results backfill (spread over nights)
 curl -X POST http://localhost:5199/results/sync/31111       # one court's latest round results
 curl -X POST http://localhost:5199/monitor/run          # anomaly alerts + storage watchdog now
+
+# Derived docs + maintenance (no BIT traffic)
+curl -X POST http://localhost:5199/admin/rebuild-derived    # rebuild AuctionCase/AuctionRound + link SaleResults
+curl -X POST http://localhost:5199/admin/reparse-details    # re-parse stored detail captures onto existing rows
+curl -X POST http://localhost:5199/admin/test-alert         # send a test alert (verify ntfy/SMTP delivery)
 ```
+
+A **07:00 JST** job also rebuilds the derived `AuctionCase`/`AuctionRound` documents nightly, and an
+**18:00 JST** job syncs each 開札 day's `売却結果` the evening they're published.
 
 A nightly sweep fires automatically at **01:00 JST**, and archive-backlog/results-sync/monitor at
 **07:00 JST** (`NightlySweepScheduler`). New discoveries are archived the same night; sweeps + archives

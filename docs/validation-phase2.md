@@ -77,11 +77,42 @@ retried) is covered by unit test `ArchiveHandlerTests.A_block_disables_the_court
 - [x] Restarting the host mid-crawl loses no queued work — **`kill -9` at 13 archives; 26 durable messages resumed to 39.**
 - [x] `docs/runbook.md` exists and matches reality.
 
+## Gap closures (2026-07-15, follow-up pass)
+
+The remaining Phase-1/2 gaps were closed and validated live:
+
+- **AuctionCase + AuctionRound documents** (the missing domain model). `RebuildDerivedDocuments`
+  (`POST /admin/rebuild-derived`, non-BIT) materializes them from the property store. Live:
+  **1,015 AuctionCases** (67 multi-物件, e.g. 令和07年(ケ)第5号 = 18 items) and **128 AuctionRounds**
+  keyed on court + 開札期日 with a derived lifecycle (viewing 80 / bidding 33 / closed 14 / opened 1).
+- **SaleResult → PropertyItem linkage + 開札-date inheritance**. The rebuild links each result on
+  court + normalized case + 物件番号. Live: **43 results linked, 32 inherited an 開札 date** (e.g.
+  令和07年(ケ)第600号 → property `31111:00000079036` → 2026-07-29). The rest are historical results whose
+  property is long delisted — no property to link to (the documented, unavoidable limit).
+- **Round-keyed, evening results scheduling**. `ScheduleResultsSync` now enqueues one
+  `SyncRoundResults(court, 開札 date)` per distinct round (`DueRounds`), and a new **18:00 JST** scheduler
+  job makes it the primary trigger (evening of 開札, after BIT publishes), with 07:00 as morning catch-up.
+- **Real alert delivery**. `POST /admin/test-alert` sent a live alert through `NtfyAlerter` and it was
+  **confirmed received on ntfy.sh** (title, priority 3). (SMTP stays config-gated; not exercised.)
+- **Re-check loop, live**. Backdated an archived Tokyo property's `LastArchivedAt` to 8 days ago;
+  `ScheduleArchiveWork` found "1 to re-check", re-fetched the 3点セット, and — hash unchanged — recorded
+  `LastRecheckedAt` + `RechecksPerformed=1`, `AmendmentsCaptured=0` (no spurious new version).
+- **Nationwide results backfill executed**. `POST /results/backfill-all` fanned out to **98 courts** and
+  ran the full per-court/per-page crawl at 1 req/3s (durable — it survived a `kill -9` restart mid-run and
+  resumed). Reached **95 courts / ~1,380 sale results (855 sold)** and finishing the tail in the
+  background — the "biggest crawl the system does," spread over time as designed. A re-run of the rebuild
+  then linked **82** of those results to tracked properties (up from 43 as coverage grew).
+- **Attribute enrichment** (separate pass, `docs/data-profile.md`): every property now captures the full
+  per-物件 detail attribute set (37 labels) + typed rollups; a 戸建て mis-classification was fixed
+  (748 properties re-typed, classification 96 % → 100 %).
+
 ## Notes / follow-ups
 
-- The full-history results view carries no per-row 開札 date, so backfilled `SaleResult.OpeningDate` is
-  null; the per-`saleScdId` round view has dates (a later enrichment). Case re-auctions collapse under the
-  court+case+item key — acceptable for the MVP (the view appears to list final outcomes).
+- Backfilled `SaleResult.OpeningDate` is still null for results with no surviving property (historical
+  auctions); linkage fills it only where the property is still tracked. Case re-auctions collapse under
+  the court+case+item key — acceptable for the MVP (the full-history view lists final outcomes).
 - Nationwide PDF archiving remains disk-gated to `ArchivePrefectures` (Tokyo here). Tokyo's 3点セット
   averaged ~2.3 MB each (39 → 91 MB), far below the 10–50 MB/property worst case — measure other
   prefectures before widening.
+- Genuinely unavailable in BIT (need a geocoder, not a crawl): normalized/住居表示 address and geocode
+  confidence. Everything else the specs named is now captured.
