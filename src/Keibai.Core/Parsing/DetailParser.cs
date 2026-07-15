@@ -203,24 +203,13 @@ public static partial class DetailParser
     };
 
     /// <summary>
-    /// Recover the property type from the detail page's 種別 row
-    /// (<c>&lt;div class="…_th"&gt;種別&lt;/div&gt;&lt;div class="…_td"&gt;&lt;span&gt;土地&lt;/span&gt;…</c>).
-    /// Used to backfill <see cref="SaleCls"/> on multi-item listing cards whose badge markup omits it.
+    /// The card-level property type from the detail page's header <c>badge</c> span (土地 / 戸建て /
+    /// マンション / その他) — NOT the per-物件 種別 table, whose first item is often 土地 even on a 戸建 card.
     /// </summary>
     private static SaleCls? ParseSaleCls(HtmlDocument doc)
     {
-        var th = doc.DocumentNode.SelectNodes("//div[contains(@class,'bit__paragraphBreaksTable_th')]")
-            ?.FirstOrDefault(n => n.InnerText.Trim() == "種別");
-        var td = th?.SelectSingleNode("following-sibling::div[contains(@class,'bit__paragraphBreaksTable_td')][1]");
-        var value = td?.SelectSingleNode(".//span")?.InnerText.Trim();
-        return value switch
-        {
-            "土地" => Domain.SaleCls.Land,
-            "戸建" => Domain.SaleCls.Detached,
-            "マンション" => Domain.SaleCls.Mansion,
-            "その他" => Domain.SaleCls.Other,
-            _ => null,
-        };
+        var badge = doc.DocumentNode.SelectSingleNode("//span[contains(@class,'badge')]");
+        return SaleClassifier.Parse(badge?.InnerText);
     }
 
     private static DateOnly? DateAfterLabel(string text, string label)

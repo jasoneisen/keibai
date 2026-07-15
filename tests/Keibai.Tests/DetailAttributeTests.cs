@@ -1,4 +1,5 @@
 using Keibai.Core.Domain;
+using Keibai.Core.Ingestion;
 using Keibai.Core.Parsing;
 using Xunit;
 
@@ -10,8 +11,16 @@ public class DetailAttributeTests
     {
         var detail = DetailParser.Parse(html);
         var item = new PropertyItem { Id = "c:s", SaleUnitId = "s", CourtId = "c", PrefectureId = "13" };
-        DetailParser.ApplyAttributeRollups(item, detail.Items);
+        DetailEnrichment.Apply(item, detail); // full enrichment (type badge + attributes + rollups)
         return item;
+    }
+
+    [Fact]
+    public void Type_badges_classify_correctly_including_the_te_spelling()
+    {
+        Assert.Equal(SaleCls.Detached, Enrich(Fixtures.DetailKodate()).SaleCls);  // badge 戸建て
+        Assert.Equal(SaleCls.Mansion, Enrich(Fixtures.DetailMansion()).SaleCls);
+        Assert.Equal(SaleCls.Land, Enrich(Fixtures.Detail()).SaleCls);
     }
 
     [Fact]

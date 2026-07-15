@@ -168,25 +168,9 @@ public static class IngestionHandler
             return; // listing handler owns creation; detail only enriches
         }
 
-        item.Latitude = detail.Latitude ?? item.Latitude;
-        item.Longitude = detail.Longitude ?? item.Longitude;
-        item.Case ??= detail.Case;
-
-        // Phase 2: enrich from the detail page. SaleCls is filled only when the listing badge omitted it
-        // (the multi-item-card follow-up); the bid window + prices update in place so a reschedule is
-        // reflected on the next sweep.
-        item.SaleCls ??= detail.SaleCls;
-        item.ViewingStart = detail.ViewingStart ?? item.ViewingStart;
-        item.BiddingStart = detail.BiddingStart ?? item.BiddingStart;
-        item.BiddingEnd = detail.BiddingEnd ?? item.BiddingEnd;
-        item.OpeningDate = detail.OpeningDate ?? item.OpeningDate;
-        item.SaleDecisionDate = detail.SaleDecisionDate ?? item.SaleDecisionDate;
-        item.SaleStandardAmount = detail.SaleStandardAmount ?? item.SaleStandardAmount;
-        item.MinimumBidAmount = detail.MinimumBidAmount ?? item.MinimumBidAmount;
-
-        // Capture the full per-物件 attribute set + typed rollups (land/floor/exclusive area, structure,
-        // 築年月, 管理費, occupancy, zoning, …) — everything BIT renders on the detail page.
-        DetailParser.ApplyAttributeRollups(item, detail.Items);
+        // Enrich from the detail page: lat/lng, case, bid window, prices, and the full per-物件 attribute
+        // set + typed rollups — everything BIT renders (see DetailEnrichment).
+        DetailEnrichment.Apply(item, detail);
 
         session.Store(item);
         await session.SaveChangesAsync(ct).ConfigureAwait(false);

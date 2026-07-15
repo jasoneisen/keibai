@@ -69,6 +69,13 @@ app.MapPost("/monitor/run", async (IMessageBus bus) =>
     return Results.Accepted("/monitor/run", new { enqueued = "monitor" });
 });
 
+// Offline backfill: re-parse stored detail captures to populate new attribute fields (no BIT traffic).
+app.MapPost("/admin/reparse-details", async (IMessageBus bus) =>
+{
+    await bus.PublishAsync(new ReparseDetailCaptures());
+    return Results.Accepted("/admin/reparse-details", new { enqueued = "reparse" });
+});
+
 // Sale-results triggers: backfill one court's ~3 years of 売却結果, the whole nationwide backfill, or
 // sync one court's latest round.
 app.MapPost("/results/backfill/{courtId}", async (string courtId, IMessageBus bus) =>

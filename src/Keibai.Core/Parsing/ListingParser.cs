@@ -124,15 +124,7 @@ public static partial class ListingParser
     private static SaleCls? ExtractSaleCls(HtmlNode card)
     {
         var badge = card.SelectSingleNode(".//span[contains(@class,'badge')]");
-        var t = badge?.InnerText?.Trim();
-        return t switch
-        {
-            "土地" => SaleCls.Land,
-            "戸建" => SaleCls.Detached,
-            "マンション" => SaleCls.Mansion,
-            "その他" => SaleCls.Other,
-            _ => null,
-        };
+        return SaleClassifier.Parse(badge?.InnerText);
     }
 
     private static (long? Standard, long? Deposit) ExtractPrices(HtmlNode card)

@@ -58,6 +58,14 @@ public sealed record BackfillAllResults;
 /// </summary>
 public sealed record ScheduleResultsSync;
 
+/// <summary>
+/// Offline backfill: re-parse every stored detail <see cref="Domain.RawCapture"/> with the current parser
+/// and re-enrich the matching <see cref="Domain.PropertyItem"/> (full attribute set + rollups). Touches NO
+/// BIT — it replays captured HTML from the blob store — so it is safe to run any time to backfill new
+/// fields onto existing properties.
+/// </summary>
+public sealed record ReparseDetailCaptures;
+
 // --- Phase 2: monitoring ---
 
 /// <summary>

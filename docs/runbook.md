@@ -51,6 +51,9 @@ curl -X POST http://localhost:5199/results/sync/31111
 
 # Run the monitor now (anomaly alerts + storage watchdog)
 curl -X POST http://localhost:5199/monitor/run
+
+# Backfill new attribute fields onto existing properties WITHOUT crawling (replays stored detail captures)
+curl -X POST http://localhost:5199/admin/reparse-details
 ```
 
 ### Re-enable a court that was auto-disabled after a block
