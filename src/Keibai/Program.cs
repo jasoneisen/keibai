@@ -77,6 +77,13 @@ app.MapPost("/admin/reparse-details", async (IMessageBus bus) =>
     return Results.Accepted("/admin/reparse-details", new { enqueued = "reparse" });
 });
 
+// Rebuild the derived AuctionCase + AuctionRound documents and link SaleResults (no BIT traffic).
+app.MapPost("/admin/rebuild-derived", async (IMessageBus bus) =>
+{
+    await bus.PublishAsync(new RebuildDerivedDocuments());
+    return Results.Accepted("/admin/rebuild-derived", new { enqueued = "rebuild-derived" });
+});
+
 // Send a test alert through the configured IAlerter — verifies real end-to-end delivery (ntfy/SMTP).
 app.MapPost("/admin/test-alert", async (IAlerter alerter) =>
 {

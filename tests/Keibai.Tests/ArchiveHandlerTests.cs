@@ -55,7 +55,7 @@ public class ArchiveHandlerTests(HostFixture fixture)
     public async Task Rejects_a_non_pdf_download_without_marking_archived()
     {
         var prop = await SeedPropertyAsync("31111", Unique());
-        var time = At("2026-07-15T16:00:00+09:00");
+        var time = At("2026-07-16T16:00:00+09:00");
         var junk = Encoding.UTF8.GetBytes("<html>not a pdf</html>");
         var (client, blobs, store) = BuildClient(available: true, pdf: junk, pdfContentType: "text/html");
 
@@ -64,14 +64,14 @@ public class ArchiveHandlerTests(HostFixture fixture)
         await using var q = fixture.Store.QuerySession();
         Assert.Empty(await q.Query<ArchivedDocument>().Where(d => d.PropertyItemId == prop.Id).ToListAsync());
         Assert.Null((await q.LoadAsync<PropertyItem>(prop.Id))!.LastArchivedAt);
-        Assert.Equal(1, (await q.LoadAsync<DailyStats>("2026-07-15"))!.ArchiveFailures);
+        Assert.Equal(1, (await q.LoadAsync<DailyStats>("2026-07-16"))!.ArchiveFailures);
     }
 
     [Fact]
     public async Task Marks_unavailable_when_the_3set_is_already_deleted()
     {
         var prop = await SeedPropertyAsync("31111", Unique());
-        var time = At("2026-07-15T16:00:00+09:00");
+        var time = At("2026-07-17T16:00:00+09:00");
         var (client, blobs, store) = BuildClient(available: false, pdf: ValidPdf);
 
         await ArchiveAsync(prop, client, blobs, store, time);
@@ -89,7 +89,7 @@ public class ArchiveHandlerTests(HostFixture fixture)
         var courtId = "88" + Guid.NewGuid().ToString("N")[..3];
         var prop = await SeedPropertyAsync(courtId, Unique());
         await SeedCourtAsync(courtId);
-        var time = At("2026-07-15T16:00:00+09:00");
+        var time = At("2026-07-18T16:00:00+09:00");
         var alerter = new CapturingAlerter();
         var (client, blobs, store) = BuildClient(available: true, pdf: ValidPdf, block: true);
 
@@ -110,7 +110,7 @@ public class ArchiveHandlerTests(HostFixture fixture)
     public async Task Recheck_keeps_both_versions_when_the_hash_changed()
     {
         var prop = await SeedPropertyAsync("31111", Unique());
-        var time = At("2026-07-15T16:00:00+09:00");
+        var time = At("2026-07-19T16:00:00+09:00");
 
         var (client1, blobs, store) = BuildClient(available: true, pdf: ValidPdf);
         await ArchiveAsync(prop, client1, blobs, store, time);
@@ -132,7 +132,7 @@ public class ArchiveHandlerTests(HostFixture fixture)
     public async Task Recheck_records_no_new_version_when_the_pdf_is_unchanged()
     {
         var prop = await SeedPropertyAsync("31111", Unique());
-        var time = At("2026-07-15T16:00:00+09:00");
+        var time = At("2026-07-20T16:00:00+09:00");
         var (client, blobs, store) = BuildClient(available: true, pdf: ValidPdf);
 
         await ArchiveAsync(prop, client, blobs, store, time);

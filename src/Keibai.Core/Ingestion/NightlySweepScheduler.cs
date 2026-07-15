@@ -57,6 +57,7 @@ public sealed class NightlySweepScheduler(
                 case Job.PostSweep:
                     await bus.PublishAsync(new ScheduleArchiveWork()).ConfigureAwait(false);
                     await bus.PublishAsync(new ScheduleResultsSync()).ConfigureAwait(false);
+                    await bus.PublishAsync(new RebuildDerivedDocuments()).ConfigureAwait(false);
                     await bus.PublishAsync(new SummarizeSweep()).ConfigureAwait(false);
                     break;
                 case Job.ResultsEvening:
