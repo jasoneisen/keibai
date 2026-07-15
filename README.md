@@ -6,16 +6,18 @@ delete them, and (Phase 3) lets you browse/search locally. **.NET 10 · Blazor �
 PostgreSQL.** No monetization, no public deployment — designed to later merge into `offmarket.deals`
 as the `jp.` market.
 
-> Phases 1 **and 2** are done: recon + scaffold + nationwide listing ingestion (Phase 1), then the
+> Phases 1, 2 **and 3** are done: recon + scaffold + nationwide listing ingestion (Phase 1); the
 > 3点セット PDF archive, 売却結果 sale-results capture/backfill, monitoring/alerts, and durable queues
-> (Phase 2 — validated live, see `docs/validation-phase2.md`). Phase 3 (Blazor UI) is next. See
-> `docs/agent-prompts.md` for the full plan and `docs/runbook.md` for operations.
+> (Phase 2); and the **Blazor search/browse UI** — search, property detail (with locally-streamed PDFs),
+> past-results explorer, ops dashboard, and a watchlist + saved-search nightly digest (Phase 3). All three
+> validated live: see `docs/validation-phase{1,2,3}.md`. `docs/agent-prompts.md` has the full plan and
+> `docs/runbook.md` the operations.
 
 ## Layout
 
 ```
 src/Keibai         thin ASP.NET Core host shell (composition root + shared-password gate + /healthz)
-src/Keibai.Web     Blazor RCL (pages under /jp; the search UI arrives in Phase 3)
+src/Keibai.Web     Blazor RCL: the /jp pages (search/detail/results/ops/watchlist) + their reader seam
 src/Keibai.Core    domain documents, HTML parsers, the BIT client, the Wolverine ingestion pipeline
 tests/Keibai.Tests       parser/rate-limit/kill-switch/idempotency + Alba host tests (xUnit v3, MTP)
 tests/Keibai.Web.Tests   bUnit component tests
@@ -74,9 +76,24 @@ curl -X POST http://localhost:5199/monitor/run          # anomaly alerts + stora
 curl -X POST http://localhost:5199/admin/rebuild-derived    # rebuild AuctionCase/AuctionRound + link SaleResults
 curl -X POST http://localhost:5199/admin/reparse-details    # re-parse stored detail captures onto existing rows
 curl -X POST http://localhost:5199/admin/test-alert         # send a test alert (verify ntfy/SMTP delivery)
+curl -X POST http://localhost:5199/admin/run-digest         # run the saved-search + watchlist digest now
 ```
 
-A **07:00 JST** job also rebuilds the derived `AuctionCase`/`AuctionRound` documents nightly, and an
+### Browse it (Phase 3 UI, all under `/jp`)
+
+Open `http://localhost:5199/` (redirects to `/jp`). Static server-rendered, stock Bootstrap, read-only —
+the UI never triggers a crawl.
+
+| route | what |
+|---|---|
+| `/jp` | **Search** — filter by prefecture / court / type / price / bidding status / 開札 date / address; sortable, paged. |
+| `/jp/property/{courtId}/{saleUnitId}` | **Detail** — every captured field + per-物件 attribute tables, archived 3点セット PDFs (streamed locally via `/jp/doc/{court}/{unit}/{sha}`, never hotlinking BIT), version history, the case's other 物件, sale result, Google Maps / BIT links, watchlist star. |
+| `/jp/results` | **Past results** — 売却結果 with winning-bid ratio + bid counts, and a per-prefecture sale-rate / median-ratio summary. |
+| `/jp/ops` | **Ops dashboard** — storage vs threshold, queue depth, today's activity, per-prefecture traffic-light health + sparklines, disabled courts, recent alerts. |
+| `/jp/watchlist` | **Watchlist + saved searches** — starred properties and named searches (run / delete); saved searches feed the nightly digest. |
+
+A **07:00 JST** job also rebuilds the derived `AuctionCase`/`AuctionRound` documents nightly, an
+**08:00 JST** job sends the saved-search + watchlist digest (one alert, only when something's new), and an
 **18:00 JST** job syncs each 開札 day's `売却結果` the evening they're published.
 
 A nightly sweep fires automatically at **01:00 JST**, and archive-backlog/results-sync/monitor at

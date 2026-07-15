@@ -5,13 +5,18 @@ on actionable anomalies. This runbook is what to do when one does.
 
 ## Daily rhythm (automatic)
 
-`NightlySweepScheduler` fires two JST jobs (BIT night hours):
+`NightlySweepScheduler` fires four JST jobs (BIT night hours):
 
 - **01:00 JST** — `SyncCourts`: nationwide listing sweep. New discoveries are detail-enriched and their
   3点セット archived **the same night** (bounded by `Keibai:Ingestion:ArchivePrefectures`).
 - **07:00 JST** — `ScheduleArchiveWork` (deadline-ordered archive backlog drain + due mid-window
-  re-checks), `ScheduleResultsSync` (results for courts with a 開札 in the last 2 days), then
-  `SummarizeSweep` (the monitor).
+  re-checks), `ScheduleResultsSync` (morning catch-up for courts with a recent 開札),
+  `RebuildDerivedDocuments` (AuctionCase/AuctionRound + SaleResult linkage), then `SummarizeSweep` (the
+  monitor).
+- **08:00 JST** — `SendSavedSearchDigest`: evaluates every saved search + watched property and sends
+  **one** digest alert of new matches / status changes (silent when nothing's new). Store-only, no BIT.
+- **18:00 JST** — `ScheduleResultsSync`: the primary 売却結果 trigger, the evening of a 開札 after BIT
+  publishes (~15:00–16:00 JST).
 
 Everything runs on the single `Sequential()` `keibai-ingestion` local queue — one BIT request at a time,
 ≥3 s apart. Durable (Postgres, schema `keibai_wolverine`), so a restart resumes in-flight work.
@@ -29,6 +34,7 @@ available). **Every alert is actionable.**
 | **PDF archive failure rate high** (Warning) | >5 % of archive attempts failed (≥20 attempts). | Check disk space, network, and whether BIT changed the download flow (`docs/bit-api.md`). |
 | **Nationwide sweep found zero listings** (Critical) | Every prefecture returned zero. Almost certainly silent breakage (auth/endpoint/parser), not a real empty result. | Check the last `CrawlRun`s and BIT by hand; the search flow likely changed. |
 | **Blob storage over threshold** (Warning) | Blob store exceeded `Keibai:Storage:MaxGigabytes`. | Add disk, prune old raw captures, or narrow `Keibai:Ingestion:ArchivePrefectures`. |
+| **Keibai digest — N new match(es), M watch update(s)** (Info) | The 08:00 digest found new properties matching a saved search and/or status changes on watched properties. Not a problem — it's the feature working. | Open the listed `/jp/property/…` links. Silence = nothing new. Every alert is also persisted to `AlertLog` and shown on `/jp/ops`. |
 
 ## Common tasks
 
@@ -54,7 +60,15 @@ curl -X POST http://localhost:5199/monitor/run
 
 # Backfill new attribute fields onto existing properties WITHOUT crawling (replays stored detail captures)
 curl -X POST http://localhost:5199/admin/reparse-details
+
+# Run the saved-search + watchlist digest now (instead of waiting for 08:00 JST)
+curl -X POST http://localhost:5199/admin/run-digest
 ```
+
+The **UI** (Phase 3, read-only — no BIT traffic) lives under `/jp`: search, property detail (with
+locally-streamed 3点セット PDFs), the past-results explorer, the **`/jp/ops` dashboard** (the 30-second
+health check — storage, queue depth, per-prefecture traffic-lights + sparklines, disabled courts, recent
+alerts), and the watchlist + saved searches that feed the 08:00 digest.
 
 ### Re-enable a court that was auto-disabled after a block
 
@@ -113,7 +127,8 @@ anything looks wrong.
 
 | thing | location |
 |---|---|
-| Documents (Court/PropertyItem/ArchivedDocument/SaleResult/CrawlRun/DailyStats/RawCapture) | Postgres schema `keibai` (Marten) |
+| Documents (Court/PropertyItem/ArchivedDocument/SaleResult/AuctionCase/AuctionRound/CrawlRun/DailyStats/RawCapture) | Postgres schema `keibai` (Marten) |
+| Phase 3 docs (SavedSearch/WatchlistEntry/AlertLog) | Postgres schema `keibai` (Marten) |
 | Durable message envelopes | Postgres schema `keibai_wolverine` |
 | Blobs (raw captures + archived PDFs) | `Keibai:BlobStore:Root` (dev: `/workspace/keibai-blobstore`) |
 | Reverse-engineered BIT flow | `docs/bit-api.md` |

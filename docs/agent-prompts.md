@@ -2,7 +2,8 @@
 
 > Moved from `offmarket.deals/todo/keibai-mvp-agent-prompts.md` (2026-07-15). **Status: Phase 1
 > completed and validated 2026-07-13** (`validation-phase1.md`); **Phase 2 completed and validated
-> live 2026-07-15** (`validation-phase2.md`, `runbook.md`). Phase 3 (Blazor UI) not started.
+> live 2026-07-15** (`validation-phase2.md`, `runbook.md`); **Phase 3 (Blazor UI) completed and validated
+> live 2026-07-15** (`validation-phase3.md`). MVP complete.
 
 Personal-use MVP of a Japanese court-auction (競売) search platform: scrape BIT, archive documents before courts delete them, browse/search locally. **.NET / Blazor / Wolverine / Marten.** No monetization, no public deployment, no entity — that comes later.
 
@@ -127,7 +128,12 @@ The OMD host (`/workspace/offmarket.deals/src/OffMarket/Program.cs`) has ONE Wol
 
 ---
 
-## Phase 3 prompt — Blazor UI: search, detail, alerts
+## Phase 3 prompt — Blazor UI: search, detail, alerts ✅ DONE (2026-07-15)
+
+> Validated live — see `validation-phase3.md`. Static-SSR Blazor pages under `/jp` (search, property
+> detail with locally-streamed PDFs, past-results explorer, ops dashboard, watchlist + saved searches),
+> a nightly 08:00 JST saved-search/watchlist digest, and stock Bootstrap 5.3.7 — all implemented and
+> demonstrated against the real 1,180-property dataset.
 
 > **Goal:** the owner (a technical user, bilingual EN with JP real-estate context) can find, evaluate, and track auction properties faster than on BIT or 981.jp — locally.
 >
