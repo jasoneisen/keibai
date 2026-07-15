@@ -1,6 +1,32 @@
 @inherits LayoutComponentBase
-@* The RCL's own layout — makes no assumption about a host layout, per the merge rules. *@
+@* The RCL's own layout — a stock Bootstrap navbar + container, no host-layout assumptions (merge rule).
+   Every page route lives under /jp so nothing collides with an offmarket.deals page. *@
 
-<main class="keibai">
+<nav class="navbar navbar-expand-md navbar-dark bg-dark mb-4">
+    <div class="container">
+        <a class="navbar-brand" href="/jp">競売 <span class="fw-light">Keibai</span></a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#keibaiNav"
+                aria-controls="keibaiNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="keibaiNav">
+            <ul class="navbar-nav me-auto mb-2 mb-md-0">
+                <li class="nav-item"><a class="nav-link" href="/jp"><i class="bi bi-search me-1"></i>Search</a></li>
+                <li class="nav-item"><a class="nav-link" href="/jp/results"><i class="bi bi-graph-up me-1"></i>Results</a></li>
+                <li class="nav-item"><a class="nav-link" href="/jp/watchlist"><i class="bi bi-star me-1"></i>Watchlist</a></li>
+                <li class="nav-item"><a class="nav-link" href="/jp/ops"><i class="bi bi-activity me-1"></i>Ops</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<main class="container pb-5">
     @Body
 </main>
+
+<footer class="border-top py-3 mt-4">
+    <div class="container text-muted small">
+        競売 Keibai — personal court-auction (競売) archive.
+        Data from the Supreme Court's 不動産競売物件情報サイト (BIT). Local, personal use only.
+    </div>
+</footer>

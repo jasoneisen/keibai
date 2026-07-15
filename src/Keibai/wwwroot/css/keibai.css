@@ -1,0 +1,29 @@
+/* Keibai — minimal custom CSS on top of stock Bootstrap 5.3.7. Only two concerns Bootstrap can't cover:
+   a cross-platform Japanese font stack, and a dependency-free sparkline for the ops dashboard. */
+
+body {
+    font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP",
+        "Yu Gothic", Meiryo, sans-serif;
+}
+
+/* Tabular numerals so yen columns and case numbers align in tables. */
+.jp-num {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Inline, chart-framework-free sparkline (ops dashboard per-prefecture history). */
+.sparkline {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 1px;
+    height: 1.25rem;
+    vertical-align: middle;
+}
+
+.sparkline > span {
+    display: inline-block;
+    width: 3px;
+    min-height: 1px;
+    background: currentColor;
+    opacity: 0.55;
+}

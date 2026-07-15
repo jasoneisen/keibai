@@ -52,7 +52,11 @@ public static class KeibaiServiceCollectionExtensions
                     // Archive priority queries order by soonest bidding deadline; results scheduling finds
                     // properties whose 開札 is today — both want an index.
                     .Index(x => x.BiddingEnd!)
-                    .Index(x => x.OpeningDate!);
+                    .Index(x => x.OpeningDate!)
+                    // Phase 3 search filters on property type + 売却基準価額 (price range) — index both so a
+                    // typical search never full-scans the collection.
+                    .Index(x => x.SaleCls!)
+                    .Index(x => x.SaleStandardAmount!);
                 opts.Schema.For<ArchivedDocument>()
                     .Identity(x => x.Id)
                     .Index(x => x.PropertyItemId)
@@ -71,6 +75,11 @@ public static class KeibaiServiceCollectionExtensions
                 opts.Schema.For<DailyStats>().Identity(x => x.Id);
                 opts.Schema.For<CrawlRun>().Index(x => x.CourtId!).Index(x => x.PrefectureId!);
                 opts.Schema.For<RawCapture>().Index(x => x.ContentHash);
+
+                // Phase 3 personalization + ops docs.
+                opts.Schema.For<SavedSearch>().Identity(x => x.Id);
+                opts.Schema.For<WatchlistEntry>().Identity(x => x.Id);
+                opts.Schema.For<Alerting.AlertLog>().Index(x => x.At);
             })
             .ApplyAllDatabaseChangesOnStartup();
 
@@ -124,6 +133,7 @@ public static class KeibaiServiceCollectionExtensions
         services.AddSingleton<NtfyAlerter>();
         services.AddSingleton<SmtpAlerter>();
         services.AddSingleton<LoggingAlerter>();
+        services.AddSingleton<StoringAlerter>();
 
         services.AddSingleton<IAlerter>(sp =>
         {
@@ -147,6 +157,8 @@ public static class KeibaiServiceCollectionExtensions
 
             // Always keep a log trail, and never let a misconfiguration silently drop alerts.
             sinks.Add(sp.GetRequiredService<LoggingAlerter>());
+            // Always persist to the AlertLog so the ops dashboard can show recent alerts.
+            sinks.Add(sp.GetRequiredService<StoringAlerter>());
             return new CompositeAlerter(sinks, sp.GetRequiredService<ILogger<CompositeAlerter>>());
         });
     }

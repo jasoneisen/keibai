@@ -3,7 +3,9 @@ using Keibai;
 using Keibai.Core.Alerting;
 using Keibai.Core.Composition;
 using Keibai.Core.Ingestion;
+using Keibai.Web;
 using Keibai.Web.Components;
+using Keibai.Web.Reading;
 using Wolverine;
 using Wolverine.Http;
 using Wolverine.Postgresql;
@@ -13,6 +15,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Composition root: the two extension methods ARE the merge artifact. At merge time the OMD host calls
 // AddKeibai + ConfigureKeibaiMessaging beside its own single Marten/Wolverine/Blazor registration.
 builder.Services.AddKeibai(builder.Configuration);
+
+// Phase 3 read-side services (property/results/ops readers + watchlist) the Blazor pages consume.
+builder.Services.AddKeibaiWeb();
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHostedService<NightlySweepScheduler>();
@@ -112,6 +117,22 @@ app.MapPost("/results/sync/{courtId}", async (string courtId, IMessageBus bus) =
 {
     await bus.PublishAsync(new SyncRoundResults(courtId, DateOnly.FromDateTime(DateTime.UtcNow)));
     return Results.Accepted($"/results/sync/{courtId}", new { enqueued = courtId });
+});
+
+// Run the Phase 3 saved-search + watchlist digest now (on-demand / delivery check).
+app.MapPost("/admin/run-digest", async (IMessageBus bus) =>
+{
+    await bus.PublishAsync(new SendSavedSearchDigest());
+    return Results.Accepted("/admin/run-digest", new { enqueued = "digest" });
+});
+
+// Stream an archived 3点セット PDF from the LOCAL blob store (never hotlink BIT). The property detail
+// page's document links point here: /jp/doc/{courtId}/{saleUnitId}/{sha256}.
+app.MapGet("/jp/doc/{courtId}/{saleUnitId}/{sha}", async (
+    string courtId, string saleUnitId, string sha, IPropertyReader properties, CancellationToken ct) =>
+{
+    var pdf = await properties.GetPdfAsync($"{courtId}:{saleUnitId}", sha, ct);
+    return pdf is null ? Results.NotFound() : Results.File(pdf.Bytes, pdf.ContentType, pdf.FileName);
 });
 
 app.MapStaticAssets();

@@ -16,6 +16,8 @@ namespace Keibai.Core.Ingestion;
 /// due re-checks), <see cref="ScheduleResultsSync"/> (a morning catch-up for any 開札 whose results were
 /// missed the evening before), then <see cref="SummarizeSweep"/> (anomaly alerts + storage watchdog), by
 /// which time the overnight sweep has normally finished.</item>
+/// <item><b>08:00 JST</b> — <see cref="SendSavedSearchDigest"/>: the Phase 3 personalization digest, run
+/// after the 07:00 rebuild so saved searches evaluate against fresh derived documents. Store-only.</item>
 /// <item><b>18:00 JST</b> — <see cref="ScheduleResultsSync"/>: the PRIMARY results trigger, run the evening
 /// of a 開札 after BIT publishes each round's 売却結果 (~15:00–16:00 JST).</item>
 /// </list>
@@ -29,6 +31,7 @@ public sealed class NightlySweepScheduler(
 {
     private static readonly TimeOnly SweepAt = new(1, 0);
     private static readonly TimeOnly PostSweepAt = new(7, 0);
+    private static readonly TimeOnly DigestAt = new(8, 0);
     private static readonly TimeOnly ResultsEveningAt = new(18, 0);
 
     /// <inheritdoc/>
@@ -60,6 +63,9 @@ public sealed class NightlySweepScheduler(
                     await bus.PublishAsync(new RebuildDerivedDocuments()).ConfigureAwait(false);
                     await bus.PublishAsync(new SummarizeSweep()).ConfigureAwait(false);
                     break;
+                case Job.Digest:
+                    await bus.PublishAsync(new SendSavedSearchDigest()).ConfigureAwait(false);
+                    break;
                 case Job.ResultsEvening:
                     await bus.PublishAsync(new ScheduleResultsSync()).ConfigureAwait(false);
                     break;
@@ -70,7 +76,7 @@ public sealed class NightlySweepScheduler(
     private (TimeSpan Delay, Job Job) NextJob()
     {
         var nowJst = JstClock.Now(time);
-        var soonest = new[] { Job.Sweep, Job.PostSweep, Job.ResultsEvening }
+        var soonest = new[] { Job.Sweep, Job.PostSweep, Job.Digest, Job.ResultsEvening }
             .Select(j => (At: NextOccurrence(nowJst, JobTime(j)), Job: j))
             .OrderBy(x => x.At)
             .First();
@@ -88,6 +94,7 @@ public sealed class NightlySweepScheduler(
     {
         Job.Sweep => SweepAt,
         Job.PostSweep => PostSweepAt,
+        Job.Digest => DigestAt,
         Job.ResultsEvening => ResultsEveningAt,
         _ => throw new ArgumentOutOfRangeException(nameof(job), job, null),
     };
@@ -96,6 +103,7 @@ public sealed class NightlySweepScheduler(
     {
         Sweep,
         PostSweep,
+        Digest,
         ResultsEvening,
     }
 }

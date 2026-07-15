@@ -80,3 +80,12 @@ public sealed record SummarizeSweep;
 
 /// <summary>Rebuild the derived AuctionCase + AuctionRound documents from the property store and link SaleResults to their property. Non-BIT; safe to run any time.</summary>
 public sealed record RebuildDerivedDocuments;
+
+// --- Phase 3: personalization digest ---
+
+/// <summary>
+/// Nightly (08:00 JST): evaluate every saved search + watched property against the current store and send
+/// ONE digest alert of new matches and watch-status changes. Non-BIT (store-only), so it does not ride the
+/// sequential ingestion queue. Idempotent — advances each search/watch baseline, so re-runs are quiet.
+/// </summary>
+public sealed record SendSavedSearchDigest;
