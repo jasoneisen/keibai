@@ -1,5 +1,6 @@
 using Keibai.Core.Bit;
 using Keibai.Core.Domain;
+using Keibai.Core.Monitoring;
 using Keibai.Core.Parsing;
 using Keibai.Core.Storage;
 using Marten;
@@ -35,6 +36,7 @@ public static class IngestionHandler
         IDocumentBlobStore blobs,
         IKeibaiStoreAccessor store,
         IMessageBus bus,
+        BitBlockResponder blockResponder,
         TimeProvider time,
         ILogger<SyncPrefectureListingsHandlerMarker> log,
         CancellationToken ct)
@@ -112,6 +114,10 @@ public static class IngestionHandler
             run.Notes.Add($"BLOCKED: {ex.Message}");
             log.LogError(ex, "BIT block during prefecture {Prefecture} sweep — parking.", message.PrefectureId);
             await FinishRunAsync(store, run, time, ct).ConfigureAwait(false);
+            // Immediate critical alert. No single court to disable at the prefecture grain (the monitor
+            // also re-surfaces this from the CrawlRun's BLOCKED note).
+            await blockResponder.RespondAsync(null, $"prefecture {message.PrefectureId} sweep", ex, ct)
+                .ConfigureAwait(false);
             throw; // let Wolverine park + surface it
         }
 
@@ -129,6 +135,7 @@ public static class IngestionHandler
         IDocumentBlobStore blobs,
         IKeibaiStoreAccessor store,
         IMessageBus bus,
+        BitBlockResponder blockResponder,
         IOptions<BitOptions> bitOptions,
         TimeProvider time,
         CancellationToken ct)
@@ -140,9 +147,18 @@ public static class IngestionHandler
         }
 
         var resultsHtml = System.Text.Encoding.UTF8.GetString(htmlBytes);
-        var detail = await client
-            .GetPropertyDetailAsync(resultsHtml, message.CourtId, message.SaleUnitId, ct)
-            .ConfigureAwait(false);
+        PropertyDetail detail;
+        try
+        {
+            detail = await client
+                .GetPropertyDetailAsync(resultsHtml, message.CourtId, message.SaleUnitId, ct)
+                .ConfigureAwait(false);
+        }
+        catch (BitBlockedException ex)
+        {
+            await blockResponder.RespondAsync(message.CourtId, "property detail", ex, ct).ConfigureAwait(false);
+            return;
+        }
 
         var id = $"{message.CourtId}:{message.SaleUnitId}";
         await using var session = store.LightweightSession();

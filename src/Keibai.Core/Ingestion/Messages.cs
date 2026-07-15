@@ -46,3 +46,13 @@ public sealed record SyncRoundResults(string CourtId, DateOnly OpeningDate);
 /// handler well under the 30-minute execution ceiling). BIT retains ~3 years of results.
 /// </summary>
 public sealed record BackfillResults(string CourtId, int Page = 1);
+
+// --- Phase 2: monitoring ---
+
+/// <summary>
+/// Summarize the latest nightly run against trailing norms and raise actionable alerts (fetch failures,
+/// &gt;50% listing drops, high PDF-archive failure rate, zero data nationwide, storage over threshold).
+/// Non-BIT work, so it does NOT ride the sequential ingestion queue. Also the manual "check health now"
+/// trigger.
+/// </summary>
+public sealed record SummarizeSweep;

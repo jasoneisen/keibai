@@ -5,6 +5,7 @@ using Keibai.Core.Ingestion;
 using Keibai.Web.Components;
 using Wolverine;
 using Wolverine.Http;
+using Wolverine.Postgresql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +22,17 @@ builder.Services.AddWolverineHttp();
 builder.Host.UseWolverine(opts =>
 {
     opts.ConfigureKeibaiMessaging();
+
+    // Host-only durability: back the durable local queues with Postgres so a restart mid-crawl loses no
+    // queued work. Deliberately NOT in ConfigureKeibaiMessaging (the merge artifact) — at merge time the
+    // OMD host owns Wolverine's message store. Skipped under Testing (Alba boots many ephemeral hosts;
+    // handler-driven tests don't need the durable transport).
+    if (!builder.Environment.IsEnvironment("Testing"))
+    {
+        var messagingConnection = builder.Configuration.GetConnectionString("Keibai")
+            ?? throw new InvalidOperationException("ConnectionStrings:Keibai is required for durable messaging.");
+        opts.PersistMessagesWithPostgresql(messagingConnection, "keibai_wolverine");
+    }
 });
 
 var app = builder.Build();
@@ -42,6 +54,19 @@ app.MapPost("/sync/all", async (IMessageBus bus) =>
 {
     await bus.PublishAsync(new SyncCourts());
     return Results.Accepted("/sync/all", new { enqueued = "nationwide" });
+});
+
+// Phase 2 ops triggers: drain the archive backlog (deadline-ordered) + due re-checks; run the monitor.
+app.MapPost("/archive/schedule", async (IMessageBus bus) =>
+{
+    await bus.PublishAsync(new ScheduleArchiveWork());
+    return Results.Accepted("/archive/schedule", new { enqueued = "archive-work" });
+});
+
+app.MapPost("/monitor/run", async (IMessageBus bus) =>
+{
+    await bus.PublishAsync(new SummarizeSweep());
+    return Results.Accepted("/monitor/run", new { enqueued = "monitor" });
 });
 
 app.MapStaticAssets();

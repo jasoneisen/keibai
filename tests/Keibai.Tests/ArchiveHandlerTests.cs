@@ -1,9 +1,11 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using Keibai.Core.Alerting;
 using Keibai.Core.Bit;
 using Keibai.Core.Domain;
 using Keibai.Core.Ingestion;
+using Keibai.Core.Monitoring;
 using Keibai.Core.Storage;
 using Marten;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,13 +26,10 @@ public class ArchiveHandlerTests(HostFixture fixture)
     public async Task Archives_a_valid_pdf_content_addressed_and_idempotently()
     {
         var prop = await SeedPropertyAsync("31111", Unique());
-        var time = new FakeTimeProvider(DateTimeOffset.Parse("2026-07-15T16:00:00+09:00"));
+        var time = At("2026-07-15T16:00:00+09:00");
         var (client, blobs, store) = BuildClient(available: true, pdf: ValidPdf);
-        var options = ArchiveOptions();
 
-        await ArchiveHandler.Handle(
-            new ArchiveDocuments(prop.CourtId, prop.SaleUnitId), client, blobs, store, options, time,
-            NullLogger<ArchiveHandlerMarker>.Instance, CancellationToken.None);
+        await ArchiveAsync(prop, client, blobs, store, time);
 
         await using (var q = fixture.Store.QuerySession())
         {
@@ -40,18 +39,12 @@ public class ArchiveHandlerTests(HostFixture fixture)
             Assert.Equal(ValidPdf.Length, doc.ByteSize);
             Assert.Equal(1, doc.Version);
             Assert.True(await blobs.ExistsAsync(doc.BlobPath));
-
-            var stored = await q.LoadAsync<PropertyItem>(prop.Id);
-            Assert.NotNull(stored!.LastArchivedAt);
-
-            var stats = await q.LoadAsync<DailyStats>("2026-07-15");
-            Assert.Equal(1, stats!.PdfsArchived);
+            Assert.NotNull((await q.LoadAsync<PropertyItem>(prop.Id))!.LastArchivedAt);
+            Assert.Equal(1, (await q.LoadAsync<DailyStats>("2026-07-15"))!.PdfsArchived);
         }
 
         // Re-run: already archived → no second download, no duplicate document.
-        await ArchiveHandler.Handle(
-            new ArchiveDocuments(prop.CourtId, prop.SaleUnitId), client, blobs, store, options, time,
-            NullLogger<ArchiveHandlerMarker>.Instance, CancellationToken.None);
+        await ArchiveAsync(prop, client, blobs, store, time);
         await using (var q = fixture.Store.QuerySession())
         {
             Assert.Equal(1, await q.Query<ArchivedDocument>().Where(d => d.PropertyItemId == prop.Id).CountAsync());
@@ -62,13 +55,11 @@ public class ArchiveHandlerTests(HostFixture fixture)
     public async Task Rejects_a_non_pdf_download_without_marking_archived()
     {
         var prop = await SeedPropertyAsync("31111", Unique());
-        var time = new FakeTimeProvider(DateTimeOffset.Parse("2026-07-15T16:00:00+09:00"));
+        var time = At("2026-07-15T16:00:00+09:00");
         var junk = Encoding.UTF8.GetBytes("<html>not a pdf</html>");
         var (client, blobs, store) = BuildClient(available: true, pdf: junk, pdfContentType: "text/html");
 
-        await ArchiveHandler.Handle(
-            new ArchiveDocuments(prop.CourtId, prop.SaleUnitId), client, blobs, store, ArchiveOptions(), time,
-            NullLogger<ArchiveHandlerMarker>.Instance, CancellationToken.None);
+        await ArchiveAsync(prop, client, blobs, store, time);
 
         await using var q = fixture.Store.QuerySession();
         Assert.Empty(await q.Query<ArchivedDocument>().Where(d => d.PropertyItemId == prop.Id).ToListAsync());
@@ -80,12 +71,10 @@ public class ArchiveHandlerTests(HostFixture fixture)
     public async Task Marks_unavailable_when_the_3set_is_already_deleted()
     {
         var prop = await SeedPropertyAsync("31111", Unique());
-        var time = new FakeTimeProvider(DateTimeOffset.Parse("2026-07-15T16:00:00+09:00"));
+        var time = At("2026-07-15T16:00:00+09:00");
         var (client, blobs, store) = BuildClient(available: false, pdf: ValidPdf);
 
-        await ArchiveHandler.Handle(
-            new ArchiveDocuments(prop.CourtId, prop.SaleUnitId), client, blobs, store, ArchiveOptions(), time,
-            NullLogger<ArchiveHandlerMarker>.Instance, CancellationToken.None);
+        await ArchiveAsync(prop, client, blobs, store, time);
 
         await using var q = fixture.Store.QuerySession();
         var stored = await q.LoadAsync<PropertyItem>(prop.Id);
@@ -95,31 +84,47 @@ public class ArchiveHandlerTests(HostFixture fixture)
     }
 
     [Fact]
+    public async Task A_block_disables_the_court_alerts_and_does_not_retry()
+    {
+        var courtId = "88" + Guid.NewGuid().ToString("N")[..3];
+        var prop = await SeedPropertyAsync(courtId, Unique());
+        await SeedCourtAsync(courtId);
+        var time = At("2026-07-15T16:00:00+09:00");
+        var alerter = new CapturingAlerter();
+        var (client, blobs, store) = BuildClient(available: true, pdf: ValidPdf, block: true);
+
+        await ArchiveAsync(prop, client, blobs, store, time, alerter);
+
+        await using var q = fixture.Store.QuerySession();
+        var court = await q.LoadAsync<Court>(courtId);
+        Assert.True(court!.CrawlDisabled);
+        Assert.NotNull(court.CrawlDisabledReason);
+        var alert = Assert.Single(alerter.Alerts);
+        Assert.Equal(AlertSeverity.Critical, alert.Severity);
+        Assert.Contains(courtId, alert.Title);
+        // The property was NOT marked archived (the block aborted the attempt).
+        Assert.Null((await q.LoadAsync<PropertyItem>(prop.Id))!.LastArchivedAt);
+    }
+
+    [Fact]
     public async Task Recheck_keeps_both_versions_when_the_hash_changed()
     {
         var prop = await SeedPropertyAsync("31111", Unique());
-        var time = new FakeTimeProvider(DateTimeOffset.Parse("2026-07-15T16:00:00+09:00"));
-        var options = ArchiveOptions();
+        var time = At("2026-07-15T16:00:00+09:00");
 
-        // First archive with the original bytes.
         var (client1, blobs, store) = BuildClient(available: true, pdf: ValidPdf);
-        await ArchiveHandler.Handle(
-            new ArchiveDocuments(prop.CourtId, prop.SaleUnitId), client1, blobs, store, options, time,
-            NullLogger<ArchiveHandlerMarker>.Instance, CancellationToken.None);
+        await ArchiveAsync(prop, client1, blobs, store, time);
 
-        // A week later BIT has amended the PDF; the re-check must keep BOTH versions.
         time.Advance(TimeSpan.FromDays(8));
         var (client2, _, _) = BuildClient(available: true, pdf: AmendedPdf);
-        await ArchiveHandler.Handle(
-            new RecheckDocuments(prop.CourtId, prop.SaleUnitId), client2, blobs, store, options, time,
-            NullLogger<ArchiveHandlerMarker>.Instance, CancellationToken.None);
+        await RecheckAsync(prop, client2, blobs, store, time);
 
         await using var q = fixture.Store.QuerySession();
         var docs = await q.Query<ArchivedDocument>().Where(d => d.PropertyItemId == prop.Id)
             .OrderBy(d => d.Version).ToListAsync();
         Assert.Equal(2, docs.Count);
         Assert.Equal([1, 2], docs.Select(d => d.Version));
-        Assert.NotEqual(docs[0].Id, docs[1].Id); // distinct sha = distinct content
+        Assert.NotEqual(docs[0].Id, docs[1].Id);
         Assert.NotNull((await q.LoadAsync<PropertyItem>(prop.Id))!.LastRecheckedAt);
     }
 
@@ -127,17 +132,12 @@ public class ArchiveHandlerTests(HostFixture fixture)
     public async Task Recheck_records_no_new_version_when_the_pdf_is_unchanged()
     {
         var prop = await SeedPropertyAsync("31111", Unique());
-        var time = new FakeTimeProvider(DateTimeOffset.Parse("2026-07-15T16:00:00+09:00"));
-        var options = ArchiveOptions();
+        var time = At("2026-07-15T16:00:00+09:00");
         var (client, blobs, store) = BuildClient(available: true, pdf: ValidPdf);
 
-        await ArchiveHandler.Handle(
-            new ArchiveDocuments(prop.CourtId, prop.SaleUnitId), client, blobs, store, options, time,
-            NullLogger<ArchiveHandlerMarker>.Instance, CancellationToken.None);
+        await ArchiveAsync(prop, client, blobs, store, time);
         time.Advance(TimeSpan.FromDays(8));
-        await ArchiveHandler.Handle(
-            new RecheckDocuments(prop.CourtId, prop.SaleUnitId), client, blobs, store, options, time,
-            NullLogger<ArchiveHandlerMarker>.Instance, CancellationToken.None);
+        await RecheckAsync(prop, client, blobs, store, time);
 
         await using var q = fixture.Store.QuerySession();
         Assert.Equal(1, await q.Query<ArchivedDocument>().Where(d => d.PropertyItemId == prop.Id).CountAsync());
@@ -147,6 +147,25 @@ public class ArchiveHandlerTests(HostFixture fixture)
 
     private static string Unique() => "U" + Guid.NewGuid().ToString("N")[..10];
 
+    private static FakeTimeProvider At(string iso) => new(DateTimeOffset.Parse(iso));
+
+    private Task ArchiveAsync(
+        PropertyItem prop, BitClient client, IDocumentBlobStore blobs, IKeibaiStoreAccessor store,
+        TimeProvider time, IAlerter? alerter = null) =>
+        ArchiveHandler.Handle(
+            new ArchiveDocuments(prop.CourtId, prop.SaleUnitId), client, blobs, store, Responder(store, alerter),
+            ArchiveOptions(), time, NullLogger<ArchiveHandlerMarker>.Instance, CancellationToken.None);
+
+    private Task RecheckAsync(
+        PropertyItem prop, BitClient client, IDocumentBlobStore blobs, IKeibaiStoreAccessor store,
+        TimeProvider time, IAlerter? alerter = null) =>
+        ArchiveHandler.Handle(
+            new RecheckDocuments(prop.CourtId, prop.SaleUnitId), client, blobs, store, Responder(store, alerter),
+            ArchiveOptions(), time, NullLogger<ArchiveHandlerMarker>.Instance, CancellationToken.None);
+
+    private static BitBlockResponder Responder(IKeibaiStoreAccessor store, IAlerter? alerter) =>
+        new(store, alerter ?? new CapturingAlerter(), NullLogger<BitBlockResponder>.Instance);
+
     private async Task<PropertyItem> SeedPropertyAsync(string courtId, string saleUnitId)
     {
         var item = new PropertyItem
@@ -154,9 +173,7 @@ public class ArchiveHandlerTests(HostFixture fixture)
             Id = $"{courtId}:{saleUnitId}",
             SaleUnitId = saleUnitId,
             CourtId = courtId,
-            // Dedicated test prefecture so these seeded rows don't pollute the prefecture-13 counts other
-            // tests in the shared "host" collection assert on.
-            PrefectureId = "88",
+            PrefectureId = "88", // dedicated test prefecture (see foundation commit)
             OpeningDate = new DateOnly(2026, 7, 28),
             BiddingEnd = new DateOnly(2026, 7, 22),
             FirstSeen = DateTimeOffset.UtcNow,
@@ -166,6 +183,17 @@ public class ArchiveHandlerTests(HostFixture fixture)
         session.Store(item);
         await session.SaveChangesAsync();
         return item;
+    }
+
+    private async Task SeedCourtAsync(string courtId)
+    {
+        await using var session = fixture.Store.LightweightSession();
+        session.Store(new Court
+        {
+            Id = courtId, Name = "テスト裁判所", PrefectureId = "88",
+            FirstSeen = DateTimeOffset.UtcNow, LastSeen = DateTimeOffset.UtcNow,
+        });
+        await session.SaveChangesAsync();
     }
 
     private static IOptions<BitOptions> ArchiveOptions() =>
@@ -178,14 +206,13 @@ public class ArchiveHandlerTests(HostFixture fixture)
         });
 
     private (BitClient Client, IDocumentBlobStore Blobs, IKeibaiStoreAccessor Store) BuildClient(
-        bool available, byte[] pdf, string pdfContentType = "application/pdf")
+        bool available, byte[] pdf, string pdfContentType = "application/pdf", bool block = false)
     {
         var blobs = fixture.Host.Services.GetRequiredService<IDocumentBlobStore>();
         var store = fixture.Host.Services.GetRequiredService<IKeibaiStoreAccessor>();
-        var handler = new BitStubHandler(available, pdf, pdfContentType);
+        var handler = new BitStubHandler(available, pdf, pdfContentType, block);
         var http = new HttpClient(handler) { BaseAddress = new Uri("https://www.bit.courts.go.jp") };
-        var client = new BitClient(
-            http, blobs, store, ArchiveOptions(), NullLogger<BitClient>.Instance);
+        var client = new BitClient(http, blobs, store, ArchiveOptions(), NullLogger<BitClient>.Instance);
         return (client, blobs, store);
     }
 
@@ -201,11 +228,29 @@ public class ArchiveHandlerTests(HostFixture fixture)
         return body;
     }
 
-    private sealed class BitStubHandler(bool available, byte[] pdf, string pdfContentType) : HttpMessageHandler
+    private sealed class CapturingAlerter : IAlerter
+    {
+        public List<Alert> Alerts { get; } = [];
+
+        public Task SendAsync(Alert alert, CancellationToken ct = default)
+        {
+            Alerts.Add(alert);
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class BitStubHandler(bool available, byte[] pdf, string pdfContentType, bool block)
+        : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            if (block)
+            {
+                // BitClient converts 403 into BitBlockedException.
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Forbidden));
+            }
+
             var path = request.RequestUri!.AbsolutePath;
             if (path.EndsWith("/pd001/h03", StringComparison.Ordinal))
             {

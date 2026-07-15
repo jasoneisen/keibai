@@ -101,6 +101,7 @@ public static class KeibaiServiceCollectionExtensions
             .AddHttpMessageHandler<BitRateLimitingHandler>();
 
         AddAlerting(services);
+        services.AddSingleton<Monitoring.BitBlockResponder>();
 
         return services;
     }

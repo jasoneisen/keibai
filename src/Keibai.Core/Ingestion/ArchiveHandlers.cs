@@ -1,5 +1,6 @@
 using Keibai.Core.Bit;
 using Keibai.Core.Domain;
+using Keibai.Core.Monitoring;
 using Keibai.Core.Storage;
 using Marten;
 using Microsoft.Extensions.Logging;
@@ -23,6 +24,7 @@ public static class ArchiveHandler
         BitClient client,
         IDocumentBlobStore blobs,
         IKeibaiStoreAccessor store,
+        BitBlockResponder blockResponder,
         IOptions<BitOptions> options,
         TimeProvider time,
         ILogger<ArchiveHandlerMarker> log,
@@ -49,37 +51,46 @@ public static class ArchiveHandler
         var stats = await LoadOrCreateStatsAsync(session, JstClock.TodayKey(time)).ConfigureAwait(false);
         stats.ArchiveAttempts++;
 
-        if (!await client.IsThreeSetAvailableAsync(message.CourtId, message.SaleUnitId, ct).ConfigureAwait(false))
+        try
         {
-            item.ThreeSetUnavailable = true;
-            stats.ThreeSetUnavailable++;
-            log.LogWarning("3点セット for {Id} is unavailable (bidding ended / deleted) — cannot archive.", id);
+            if (!await client.IsThreeSetAvailableAsync(message.CourtId, message.SaleUnitId, ct)
+                    .ConfigureAwait(false))
+            {
+                item.ThreeSetUnavailable = true;
+                stats.ThreeSetUnavailable++;
+                log.LogWarning("3点セット for {Id} is unavailable (bidding ended / deleted) — cannot archive.", id);
+                await SaveAsync(session, item, stats, ct).ConfigureAwait(false);
+                return;
+            }
+
+            var (bytes, fileName) =
+                await client.DownloadThreeSetAsync(message.CourtId, message.SaleUnitId, ct).ConfigureAwait(false);
+
+            if (!ArchivePolicy.IsProbablyPdf(bytes))
+            {
+                stats.ArchiveFailures++;
+                log.LogWarning("Downloaded 3点セット for {Id} is not a valid PDF ({Size} bytes) — not archiving.",
+                    id, bytes.Length);
+                await SaveAsync(session, item, stats, ct).ConfigureAwait(false);
+                return;
+            }
+
+            var stored = await StoreVersionAsync(session, blobs, options.Value, item, bytes, fileName, time, ct)
+                .ConfigureAwait(false);
+            item.LastArchivedAt = time.GetUtcNow();
+            if (stored)
+            {
+                stats.PdfsArchived++;
+            }
+
             await SaveAsync(session, item, stats, ct).ConfigureAwait(false);
-            return;
+            log.LogInformation("Archived 3点セット for {Id}: {Size:N0} bytes.", id, bytes.Length);
         }
-
-        var (bytes, fileName) =
-            await client.DownloadThreeSetAsync(message.CourtId, message.SaleUnitId, ct).ConfigureAwait(false);
-
-        if (!ArchivePolicy.IsProbablyPdf(bytes))
+        catch (BitBlockedException ex)
         {
-            stats.ArchiveFailures++;
-            log.LogWarning("Downloaded 3点セット for {Id} is not a valid PDF ({Size} bytes) — not archiving.",
-                id, bytes.Length);
-            await SaveAsync(session, item, stats, ct).ConfigureAwait(false);
-            return;
+            // Stop-and-alert: disable this court, alert, and DO NOT retry around the block.
+            await blockResponder.RespondAsync(message.CourtId, $"archive {id}", ex, ct).ConfigureAwait(false);
         }
-
-        var stored = await StoreVersionAsync(session, blobs, options.Value, item, bytes, fileName, time, ct)
-            .ConfigureAwait(false);
-        item.LastArchivedAt = time.GetUtcNow();
-        if (stored)
-        {
-            stats.PdfsArchived++;
-        }
-
-        await SaveAsync(session, item, stats, ct).ConfigureAwait(false);
-        log.LogInformation("Archived 3点セット for {Id}: {Size:N0} bytes.", id, bytes.Length);
     }
 
     /// <summary>Re-check an archived property once mid-window; a differing hash is kept as a new version.</summary>
@@ -88,6 +99,7 @@ public static class ArchiveHandler
         BitClient client,
         IDocumentBlobStore blobs,
         IKeibaiStoreAccessor store,
+        BitBlockResponder blockResponder,
         IOptions<BitOptions> options,
         TimeProvider time,
         ILogger<ArchiveHandlerMarker> log,
@@ -111,32 +123,39 @@ public static class ArchiveHandler
         var stats = await LoadOrCreateStatsAsync(session, JstClock.TodayKey(time)).ConfigureAwait(false);
         stats.RechecksPerformed++;
 
-        if (item.ThreeSetUnavailable ||
-            !await client.IsThreeSetAvailableAsync(message.CourtId, message.SaleUnitId, ct).ConfigureAwait(false))
+        try
         {
-            item.ThreeSetUnavailable = true;
+            if (item.ThreeSetUnavailable ||
+                !await client.IsThreeSetAvailableAsync(message.CourtId, message.SaleUnitId, ct).ConfigureAwait(false))
+            {
+                item.ThreeSetUnavailable = true;
+                await SaveAsync(session, item, stats, ct).ConfigureAwait(false);
+                return;
+            }
+
+            var (bytes, fileName) =
+                await client.DownloadThreeSetAsync(message.CourtId, message.SaleUnitId, ct).ConfigureAwait(false);
+            if (!ArchivePolicy.IsProbablyPdf(bytes))
+            {
+                stats.ArchiveFailures++;
+                await SaveAsync(session, item, stats, ct).ConfigureAwait(false);
+                return;
+            }
+
+            var stored = await StoreVersionAsync(session, blobs, options.Value, item, bytes, fileName, time, ct)
+                .ConfigureAwait(false);
+            if (stored)
+            {
+                stats.AmendmentsCaptured++;
+                log.LogInformation("Re-check captured an AMENDED 3点セット for {Id} — kept as a new version.", id);
+            }
+
             await SaveAsync(session, item, stats, ct).ConfigureAwait(false);
-            return;
         }
-
-        var (bytes, fileName) =
-            await client.DownloadThreeSetAsync(message.CourtId, message.SaleUnitId, ct).ConfigureAwait(false);
-        if (!ArchivePolicy.IsProbablyPdf(bytes))
+        catch (BitBlockedException ex)
         {
-            stats.ArchiveFailures++;
-            await SaveAsync(session, item, stats, ct).ConfigureAwait(false);
-            return;
+            await blockResponder.RespondAsync(message.CourtId, $"re-check {id}", ex, ct).ConfigureAwait(false);
         }
-
-        var stored = await StoreVersionAsync(session, blobs, options.Value, item, bytes, fileName, time, ct)
-            .ConfigureAwait(false);
-        if (stored)
-        {
-            stats.AmendmentsCaptured++;
-            log.LogInformation("Re-check captured an AMENDED 3点セット for {Id} — kept as a new version.", id);
-        }
-
-        await SaveAsync(session, item, stats, ct).ConfigureAwait(false);
     }
 
     /// <summary>

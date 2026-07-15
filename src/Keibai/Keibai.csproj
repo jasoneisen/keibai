@@ -17,6 +17,10 @@
     <PackageReference Include="WolverineFx" Version="6.16.0" />
     <PackageReference Include="WolverineFx.Http" Version="6.16.0" />
     <PackageReference Include="WolverineFx.Marten" Version="6.16.0" />
+    <!-- Host-only: Postgres-backed durable envelope storage so a restart never loses queued crawl work.
+         Kept out of the merge artifacts (AddKeibai/ConfigureKeibaiMessaging) — the OMD host supplies
+         durability from its own store at merge time. -->
+    <PackageReference Include="WolverineFx.Postgresql" Version="6.16.0" />
     <!-- Wolverine 6 needs this for the default runtime Roslyn codegen (TypeLoadMode.Dynamic). -->
     <PackageReference Include="WolverineFx.RuntimeCompilation" Version="6.16.0" />
   </ItemGroup>
