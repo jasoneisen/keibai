@@ -4,6 +4,7 @@ using Keibai.Core.Parsing;
 using Keibai.Core.Storage;
 using Marten;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Wolverine;
 
 namespace Keibai.Core.Ingestion;
@@ -120,12 +121,16 @@ public static class IngestionHandler
             message.PrefectureId, run.ItemsFound, run.ItemsNew, run.ItemsChanged, run.RequestsMade);
     }
 
-    /// <summary>Fetch and upsert one property's detail fields (lat/lng, confirmed case number).</summary>
+    /// <summary>Fetch and upsert one property's detail fields (lat/lng, bid window, type), then—if this is a
+    /// newly-discovered property in an archived prefecture—enqueue same-night archival of its 3点セット.</summary>
     public static async Task Handle(
         SyncPropertyDetail message,
         BitClient client,
         IDocumentBlobStore blobs,
         IKeibaiStoreAccessor store,
+        IMessageBus bus,
+        IOptions<BitOptions> bitOptions,
+        TimeProvider time,
         CancellationToken ct)
     {
         var htmlBytes = await blobs.GetAsync(message.ResultsHtmlBlobPath, ct).ConfigureAwait(false);
@@ -165,6 +170,16 @@ public static class IngestionHandler
 
         session.Store(item);
         await session.SaveChangesAsync(ct).ConfigureAwait(false);
+
+        // Phase 2: archive the 3点セット the SAME night it's discovered (it can be deleted any time after
+        // 開札). The archive handler re-checks eligibility + idempotency; this is just the same-night kick.
+        if (item.LastArchivedAt is null && !item.ThreeSetUnavailable
+            && ArchivePolicy.PrefectureEligible(item.PrefectureId, bitOptions.Value.ArchivePrefectures)
+            && ArchivePolicy.InWindow(item, JstClock.Today(time)))
+        {
+            await bus.PublishAsync(new ArchiveDocuments(message.CourtId, message.SaleUnitId))
+                .ConfigureAwait(false);
+        }
     }
 
     /// <summary>Idempotent upsert of one listing row's court + property (internal for tests).</summary>

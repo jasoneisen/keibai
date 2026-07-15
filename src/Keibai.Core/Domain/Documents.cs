@@ -132,17 +132,21 @@ public sealed class PropertyItem
 }
 
 /// <summary>
-/// An archived 3点セット (or component) PDF. Content-addressed: <see cref="Id"/> is the sha256 of the
-/// bytes, so re-downloading identical bytes maps to the same document (idempotent). A mid-window
-/// amendment changes the bytes → a new sha → a NEW document with an incremented <see cref="Version"/>;
-/// both are kept (never overwrite an earlier capture).
+/// An archived 3点セット (or component) PDF. Identity is <c>{PropertyItemId}:{Sha256}</c>: idempotent
+/// per property (re-downloading identical bytes maps to the same record) while still letting two
+/// different properties each keep their own record even in the astronomically-unlikely case of identical
+/// content. The blob itself is content-addressed by <see cref="Sha256"/> alone, so identical bytes dedupe
+/// on disk. A mid-window amendment changes the bytes → a new sha → a NEW record with an incremented
+/// <see cref="Version"/>; both are kept (never overwrite an earlier capture).
 /// </summary>
 public sealed class ArchivedDocument
 {
-    /// <summary>sha256 hex of the bytes — the Marten identity + content address.</summary>
+    /// <summary><c>{PropertyItemId}:{Sha256}</c> — the Marten identity.</summary>
     public required string Id { get; set; }
     /// <summary>Owning property id (<c>{CourtId}:{SaleUnitId}</c>).</summary>
     public required string PropertyItemId { get; set; }
+    /// <summary>sha256 hex of the bytes — the content address / blob key.</summary>
+    public required string Sha256 { get; set; }
     /// <summary>Document kind: combined / 明細書 / 調査報告書 / 評価書 / 公告.</summary>
     public required string Kind { get; set; }
     /// <summary>1-based version for this property (increments when a re-check finds amended bytes).</summary>

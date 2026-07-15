@@ -53,7 +53,10 @@ public static class KeibaiServiceCollectionExtensions
                     // properties whose 開札 is today — both want an index.
                     .Index(x => x.BiddingEnd!)
                     .Index(x => x.OpeningDate!);
-                opts.Schema.For<ArchivedDocument>().Identity(x => x.Id).Index(x => x.PropertyItemId);
+                opts.Schema.For<ArchivedDocument>()
+                    .Identity(x => x.Id)
+                    .Index(x => x.PropertyItemId)
+                    .Index(x => x.Sha256);
                 opts.Schema.For<SaleResult>()
                     .Identity(x => x.Id)
                     .Index(x => x.PropertyItemId)

@@ -38,6 +38,14 @@ public static class KeibaiMessagingExtensions
         opts.PublishMessage<SyncCourts>().ToLocalQueue("keibai-ingestion");
         opts.PublishMessage<SyncPrefectureListings>().ToLocalQueue("keibai-ingestion");
         opts.PublishMessage<SyncPropertyDetail>().ToLocalQueue("keibai-ingestion");
+        // Phase 2 BIT-touching work joins the SAME sequential queue — a new per-type queue would
+        // reintroduce the concurrency-vs-rate-limiter deadlock that broke the first sweep. Archives,
+        // re-checks, results sync/backfill, and the schedule reconciliations all serialise here.
+        opts.PublishMessage<ArchiveDocuments>().ToLocalQueue("keibai-ingestion");
+        opts.PublishMessage<RecheckDocuments>().ToLocalQueue("keibai-ingestion");
+        opts.PublishMessage<ScheduleArchiveWork>().ToLocalQueue("keibai-ingestion");
+        opts.PublishMessage<SyncRoundResults>().ToLocalQueue("keibai-ingestion");
+        opts.PublishMessage<BackfillResults>().ToLocalQueue("keibai-ingestion");
         opts.LocalQueue("keibai-ingestion").Sequential();
 
         // A prefecture-listings handler legitimately runs for minutes (pages × 3s); the 60s default
