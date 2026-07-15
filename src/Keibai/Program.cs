@@ -1,5 +1,6 @@
 using JasperFx;
 using Keibai;
+using Keibai.Core.Alerting;
 using Keibai.Core.Composition;
 using Keibai.Core.Ingestion;
 using Keibai.Web.Components;
@@ -74,6 +75,16 @@ app.MapPost("/admin/reparse-details", async (IMessageBus bus) =>
 {
     await bus.PublishAsync(new ReparseDetailCaptures());
     return Results.Accepted("/admin/reparse-details", new { enqueued = "reparse" });
+});
+
+// Send a test alert through the configured IAlerter — verifies real end-to-end delivery (ntfy/SMTP).
+app.MapPost("/admin/test-alert", async (IAlerter alerter) =>
+{
+    await alerter.SendAsync(new Alert(
+        "Keibai test alert",
+        "Test alert from POST /admin/test-alert — if you received this, delivery works.",
+        AlertSeverity.Info));
+    return Results.Accepted("/admin/test-alert", new { sent = true });
 });
 
 // Sale-results triggers: backfill one court's ~3 years of 売却結果, the whole nationwide backfill, or
