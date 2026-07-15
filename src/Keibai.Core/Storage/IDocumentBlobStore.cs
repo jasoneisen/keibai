@@ -19,4 +19,7 @@ public interface IDocumentBlobStore
 
     /// <summary>True when a blob exists at the path.</summary>
     Task<bool> ExistsAsync(string path, CancellationToken ct = default);
+
+    /// <summary>Total bytes currently stored across all blobs (powers the storage watchdog).</summary>
+    Task<long> GetTotalBytesAsync(CancellationToken ct = default);
 }

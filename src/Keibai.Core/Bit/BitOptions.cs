@@ -35,6 +35,15 @@ public sealed class BitOptions
     /// </summary>
     public TimeSpan RequestTimeout { get; set; } = TimeSpan.FromSeconds(120);
 
-    /// <summary>Prefectures whose PDFs to archive (Phase 2). Empty = all.</summary>
+    /// <summary>
+    /// Prefectures whose PDFs to archive (Phase 2). Empty = all. Nationwide archiving is 100–500 GB/yr,
+    /// so a disk-constrained deployment limits this to selected prefectures (e.g. <c>["13"]</c> Tokyo).
+    /// </summary>
     public List<string> ArchivePrefectures { get; set; } = [];
+
+    /// <summary>
+    /// Days after the first archive to re-check a property's 3点セット for mid-window amendments (once).
+    /// If the re-fetched bytes hash differently, the new version is archived alongside the original.
+    /// </summary>
+    public int RecheckAfterDays { get; set; } = 7;
 }

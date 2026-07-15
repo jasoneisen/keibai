@@ -1,4 +1,5 @@
 using Keibai.Core.Bit;
+using Keibai.Core.Domain;
 using Keibai.Core.Parsing;
 using Xunit;
 
@@ -18,6 +19,30 @@ public class DetailParserTests
         Assert.NotNull(detail.Longitude);
         Assert.InRange(detail.Latitude!.Value, 35.0, 36.0);
         Assert.InRange(detail.Longitude!.Value, 139.0, 140.0);
+    }
+
+    [Fact]
+    public void Parses_bidding_schedule_from_detail_fixture()
+    {
+        var detail = DetailParser.Parse(Fixtures.Detail());
+
+        Assert.Equal(new DateOnly(2026, 6, 26), detail.ViewingStart);
+        Assert.Equal(new DateOnly(2026, 7, 15), detail.BiddingStart);
+        Assert.Equal(new DateOnly(2026, 7, 22), detail.BiddingEnd);
+        Assert.Equal(new DateOnly(2026, 7, 28), detail.OpeningDate);
+        Assert.Equal(new DateOnly(2026, 8, 12), detail.SaleDecisionDate);
+    }
+
+    [Fact]
+    public void Recovers_type_and_prices_from_detail_fixture()
+    {
+        // The multi-item-card follow-up: 種別 is recoverable from the detail page even when the listing
+        // badge omitted it. The detail page also carries 買受可能価額, which the listing does not.
+        var detail = DetailParser.Parse(Fixtures.Detail());
+
+        Assert.Equal(SaleCls.Land, detail.SaleCls);
+        Assert.Equal(5_750_000, detail.SaleStandardAmount);
+        Assert.Equal(4_600_000, detail.MinimumBidAmount);
     }
 
     [Fact]

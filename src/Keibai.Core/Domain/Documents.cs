@@ -42,6 +42,16 @@ public sealed class Court
     public DateTimeOffset FirstSeen { get; set; }
     /// <summary>When this court was last observed in a sweep.</summary>
     public DateTimeOffset LastSeen { get; set; }
+    /// <summary>
+    /// When true, no BIT traffic is issued for this court (detail/archive/results handlers skip it). Set
+    /// automatically when BIT returns a 403/429/block-page for the court (stop-and-alert), cleared by hand
+    /// after investigation. A per-court complement to the global <c>Keibai:Ingestion:Enabled</c> switch.
+    /// </summary>
+    public bool CrawlDisabled { get; set; }
+    /// <summary>Why crawling was disabled (block reason), if it was.</summary>
+    public string? CrawlDisabledReason { get; set; }
+    /// <summary>When crawling was disabled.</summary>
+    public DateTimeOffset? CrawlDisabledAt { get; set; }
 }
 
 /// <summary>
@@ -79,6 +89,38 @@ public sealed class PropertyItem
     public double? Latitude { get; set; }
     /// <summary>BIT-supplied longitude (best-effort, never trusted).</summary>
     public double? Longitude { get; set; }
+
+    // --- Bidding schedule (from the detail page; drives archive priority + results scheduling) ---
+
+    /// <summary>閲覧開始日 — the day the 3点セット becomes viewable.</summary>
+    public DateOnly? ViewingStart { get; set; }
+    /// <summary>入札期間 start — the day bidding opens.</summary>
+    public DateOnly? BiddingStart { get; set; }
+    /// <summary>
+    /// 入札期間 end — the day bidding closes. The 3点セット PDFs are deleted around here, so this is the
+    /// archive-priority key: properties whose <see cref="BiddingEnd"/> is soonest are archived first.
+    /// </summary>
+    public DateOnly? BiddingEnd { get; set; }
+    /// <summary>開札期日 — the bid-opening day; 売却結果 is published ~15:00–16:00 JST this day.</summary>
+    public DateOnly? OpeningDate { get; set; }
+    /// <summary>売却決定期日 — the sale-decision day.</summary>
+    public DateOnly? SaleDecisionDate { get; set; }
+
+    // --- Archival state (Phase 2) ---
+
+    /// <summary>When this property's 3点セット was last successfully archived (null = never).</summary>
+    public DateTimeOffset? LastArchivedAt { get; set; }
+    /// <summary>
+    /// When the archive was last re-checked for amendments mid-window (null = never re-checked). Guards
+    /// the once-per-window re-check so a property is not re-downloaded every sweep.
+    /// </summary>
+    public DateTimeOffset? LastRecheckedAt { get; set; }
+    /// <summary>
+    /// True when BIT's availability gate reported the 3点セット is no longer downloadable (bidding ended /
+    /// deleted). Stops us from retrying a download that can never succeed.
+    /// </summary>
+    public bool ThreeSetUnavailable { get; set; }
+
     /// <summary>First time this item was observed.</summary>
     public DateTimeOffset FirstSeen { get; set; }
     /// <summary>Most recent time this item was observed.</summary>
@@ -89,7 +131,12 @@ public sealed class PropertyItem
     public string? DelistedReason { get; set; }
 }
 
-/// <summary>An archived 3点セット (or component) PDF.</summary>
+/// <summary>
+/// An archived 3点セット (or component) PDF. Content-addressed: <see cref="Id"/> is the sha256 of the
+/// bytes, so re-downloading identical bytes maps to the same document (idempotent). A mid-window
+/// amendment changes the bytes → a new sha → a NEW document with an incremented <see cref="Version"/>;
+/// both are kept (never overwrite an earlier capture).
+/// </summary>
 public sealed class ArchivedDocument
 {
     /// <summary>sha256 hex of the bytes — the Marten identity + content address.</summary>
@@ -98,6 +145,8 @@ public sealed class ArchivedDocument
     public required string PropertyItemId { get; set; }
     /// <summary>Document kind: combined / 明細書 / 調査報告書 / 評価書 / 公告.</summary>
     public required string Kind { get; set; }
+    /// <summary>1-based version for this property (increments when a re-check finds amended bytes).</summary>
+    public int Version { get; set; } = 1;
     /// <summary>Byte size.</summary>
     public long ByteSize { get; set; }
     /// <summary>Source URL it was fetched from.</summary>
@@ -137,21 +186,71 @@ public sealed class CrawlRun
     public List<string> Notes { get; set; } = [];
 }
 
-/// <summary>売却結果 — the outcome of a bidding round for a property (Phase 2 populates this).</summary>
+/// <summary>
+/// 売却結果 — the outcome of a bidding round for a property. Natural-key identity (<see cref="Id"/> =
+/// <see cref="MakeId"/>) so the nationwide backfill is idempotent: re-crawling a court's past results
+/// upserts, never duplicates.
+/// </summary>
 public sealed class SaleResult
 {
-    /// <summary>Marten identity (guid).</summary>
-    public Guid Id { get; set; }
-    /// <summary>Owning property id (<c>{CourtId}:{SaleUnitId}</c>).</summary>
+    /// <summary>Natural-key identity — see <see cref="MakeId"/> (<c>{CourtId}:{SaleUnitId}:{OpeningDate}</c>).</summary>
+    public required string Id { get; set; }
+    /// <summary>Owning property id (<c>{CourtId}:{SaleUnitId}</c>) when the property is also tracked.</summary>
     public required string PropertyItemId { get; set; }
+    /// <summary>BIT court code.</summary>
+    public string? CourtId { get; set; }
+    /// <summary>BIT sale-unit id.</summary>
+    public string? SaleUnitId { get; set; }
+    /// <summary>Case number as displayed on the results row (raw).</summary>
+    public string? CaseLabel { get; set; }
     /// <summary>開札 date.</summary>
     public DateOnly? OpeningDate { get; set; }
     /// <summary>売却価額 (winning bid, yen).</summary>
     public long? WinningBid { get; set; }
-    /// <summary>Number of bids.</summary>
+    /// <summary>売却基準価額 at the time of the round (yen), where the results row carries it.</summary>
+    public long? SaleStandardAmount { get; set; }
+    /// <summary>Number of bids (入札件数).</summary>
     public int? BidCount { get; set; }
     /// <summary>Outcome: sold / 不売 / 取下げ / 特別売却.</summary>
     public string? Outcome { get; set; }
+    /// <summary>When this result row was captured.</summary>
+    public DateTimeOffset CapturedAt { get; set; }
+
+    /// <summary>
+    /// Deterministic identity for a result row. Keyed on court + sale unit + 開札 date so the same round's
+    /// result upserts across re-crawls. Falls back to the case label when a sale-unit id is absent.
+    /// </summary>
+    public static string MakeId(string courtId, string? saleUnitId, string? caseLabel, DateOnly? openingDate)
+    {
+        var unit = string.IsNullOrEmpty(saleUnitId) ? (caseLabel ?? "?") : saleUnitId;
+        var date = openingDate?.ToString("yyyyMMdd") ?? "0";
+        return $"{courtId}:{unit}:{date}";
+    }
+}
+
+/// <summary>
+/// Per-day rollup of archive activity, keyed by JST date (<c>yyyy-MM-dd</c>). Updated by the archiver
+/// on the single sequential ingestion queue (so increments never race), and read by the nightly monitor
+/// to compute the PDF-archive failure rate. Also powers the Phase 3 ops dashboard.
+/// </summary>
+public sealed class DailyStats
+{
+    /// <summary>JST date <c>yyyy-MM-dd</c> — the Marten identity.</summary>
+    public required string Id { get; set; }
+    /// <summary>Archive attempts made (available + downloaded, whether or not they succeeded).</summary>
+    public int ArchiveAttempts { get; set; }
+    /// <summary>PDFs successfully archived (new content stored).</summary>
+    public int PdfsArchived { get; set; }
+    /// <summary>Archive attempts that failed (download error, not-a-PDF, too small).</summary>
+    public int ArchiveFailures { get; set; }
+    /// <summary>3点セット found already deleted / unavailable at archive time.</summary>
+    public int ThreeSetUnavailable { get; set; }
+    /// <summary>Mid-window re-checks performed.</summary>
+    public int RechecksPerformed { get; set; }
+    /// <summary>Re-checks that captured an amended (new-hash) version.</summary>
+    public int AmendmentsCaptured { get; set; }
+    /// <summary>Sale-result rows upserted (sweep + backfill).</summary>
+    public int SaleResultsUpserted { get; set; }
 }
 
 /// <summary>Raw pre-parse capture of a BIT response, keyed by url+timestamp.</summary>

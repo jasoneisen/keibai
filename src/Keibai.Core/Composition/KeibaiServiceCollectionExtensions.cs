@@ -24,6 +24,8 @@ public static class KeibaiServiceCollectionExtensions
     public static IServiceCollection AddKeibai(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<BitOptions>(configuration.GetSection(BitOptions.SectionName));
+        services.Configure<Alerting.AlertOptions>(configuration.GetSection(Alerting.AlertOptions.SectionName));
+        services.Configure<StorageOptions>(configuration.GetSection(StorageOptions.SectionName));
 
         var connectionString = configuration.GetConnectionString("Keibai")
             ?? throw new InvalidOperationException(
@@ -44,9 +46,18 @@ public static class KeibaiServiceCollectionExtensions
                 opts.Schema.For<PropertyItem>()
                     .Identity(x => x.Id)
                     .Index(x => x.CourtId)
-                    .Index(x => x.PrefectureId);
+                    .Index(x => x.PrefectureId)
+                    // Archive priority queries order by soonest bidding deadline; results scheduling finds
+                    // properties whose 開札 is today — both want an index.
+                    .Index(x => x.BiddingEnd!)
+                    .Index(x => x.OpeningDate!);
                 opts.Schema.For<ArchivedDocument>().Identity(x => x.Id).Index(x => x.PropertyItemId);
-                opts.Schema.For<SaleResult>().Index(x => x.PropertyItemId);
+                opts.Schema.For<SaleResult>()
+                    .Identity(x => x.Id)
+                    .Index(x => x.PropertyItemId)
+                    .Index(x => x.CourtId!)
+                    .Index(x => x.OpeningDate!);
+                opts.Schema.For<DailyStats>().Identity(x => x.Id);
                 opts.Schema.For<CrawlRun>().Index(x => x.CourtId!).Index(x => x.PrefectureId!);
                 opts.Schema.For<RawCapture>().Index(x => x.ContentHash);
             })

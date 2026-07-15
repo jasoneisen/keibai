@@ -150,6 +150,19 @@ public static class IngestionHandler
         item.Latitude = detail.Latitude ?? item.Latitude;
         item.Longitude = detail.Longitude ?? item.Longitude;
         item.Case ??= detail.Case;
+
+        // Phase 2: enrich from the detail page. SaleCls is filled only when the listing badge omitted it
+        // (the multi-item-card follow-up); the bid window + prices update in place so a reschedule is
+        // reflected on the next sweep.
+        item.SaleCls ??= detail.SaleCls;
+        item.ViewingStart = detail.ViewingStart ?? item.ViewingStart;
+        item.BiddingStart = detail.BiddingStart ?? item.BiddingStart;
+        item.BiddingEnd = detail.BiddingEnd ?? item.BiddingEnd;
+        item.OpeningDate = detail.OpeningDate ?? item.OpeningDate;
+        item.SaleDecisionDate = detail.SaleDecisionDate ?? item.SaleDecisionDate;
+        item.SaleStandardAmount = detail.SaleStandardAmount ?? item.SaleStandardAmount;
+        item.MinimumBidAmount = detail.MinimumBidAmount ?? item.MinimumBidAmount;
+
         session.Store(item);
         await session.SaveChangesAsync(ct).ConfigureAwait(false);
     }

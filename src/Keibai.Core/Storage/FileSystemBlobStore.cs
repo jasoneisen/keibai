@@ -46,6 +46,25 @@ public sealed class FileSystemBlobStore : IDocumentBlobStore
     public Task<bool> ExistsAsync(string path, CancellationToken ct = default) =>
         Task.FromResult(File.Exists(Resolve(path)));
 
+    /// <inheritdoc/>
+    public Task<long> GetTotalBytesAsync(CancellationToken ct = default)
+    {
+        long total = 0;
+        if (Directory.Exists(_root))
+        {
+            foreach (var file in Directory.EnumerateFiles(_root, "*", SearchOption.AllDirectories))
+            {
+                ct.ThrowIfCancellationRequested();
+                if (!file.EndsWith(".tmp", StringComparison.Ordinal))
+                {
+                    total += new FileInfo(file).Length;
+                }
+            }
+        }
+
+        return Task.FromResult(total);
+    }
+
     private string Resolve(string path) =>
         Path.Combine(_root, path.Replace('/', Path.DirectorySeparatorChar));
 
