@@ -46,6 +46,11 @@ var app = builder.Build();
 // Shared-password gate (host-only middleware; blank password = open, for dev/test).
 app.UseMiddleware<SharedPasswordMiddleware>();
 
+// Blazor static-SSR forms (and the Razor component endpoints) require the antiforgery middleware.
+// Phase 1/2 had no forms so it wasn't wired; Phase 3's pages do. The Phase 3 write endpoints that use
+// plain POST forms opt out per-endpoint via .DisableAntiforgery().
+app.UseAntiforgery();
+
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
 
 // Manual per-prefecture trigger for testing: POST /sync/prefecture/13 enqueues a Tokyo sweep.
