@@ -75,3 +75,8 @@ public sealed record ReparseDetailCaptures;
 /// trigger.
 /// </summary>
 public sealed record SummarizeSweep;
+
+// --- Phase 2: derived documents ---
+
+/// <summary>Rebuild the derived AuctionCase + AuctionRound documents from the property store and link SaleResults to their property. Non-BIT; safe to run any time.</summary>
+public sealed record RebuildDerivedDocuments;
