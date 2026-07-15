@@ -1,7 +1,8 @@
 # Keibai MVP — Agent Handoff Prompts
 
 > Moved from `offmarket.deals/todo/keibai-mvp-agent-prompts.md` (2026-07-15). **Status: Phase 1
-> completed and validated 2026-07-13** — see `validation-phase1.md`. Phases 2–3 not started.
+> completed and validated 2026-07-13** (`validation-phase1.md`); **Phase 2 completed and validated
+> live 2026-07-15** (`validation-phase2.md`, `runbook.md`). Phase 3 (Blazor UI) not started.
 
 Personal-use MVP of a Japanese court-auction (競売) search platform: scrape BIT, archive documents before courts delete them, browse/search locally. **.NET / Blazor / Wolverine / Marten.** No monetization, no public deployment, no entity — that comes later.
 
@@ -100,7 +101,11 @@ The OMD host (`/workspace/offmarket.deals/src/OffMarket/Program.cs`) has ONE Wol
 
 ---
 
-## Phase 2 prompt — Document archive, sale results, monitoring
+## Phase 2 prompt — Document archive, sale results, monitoring ✅ DONE (2026-07-15)
+
+> Validated live — see `validation-phase2.md`. 3点セット archiver (same-night, deadline-priority,
+> re-check), 売却結果 capture + nationwide backfill, monitoring/alerts (ntfy + SMTP), storage watchdog,
+> per-court block auto-disable, and Postgres-durable queues are all implemented and demonstrated.
 
 > **Goal:** never lose a 3点セット again, capture sale results, and make the system tell the operator when something breaks (target: <1 hr/week human attention).
 >
