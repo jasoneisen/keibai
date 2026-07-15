@@ -13,8 +13,9 @@ namespace Keibai.Core.Ingestion;
 /// <item><b>01:00 JST</b> — <see cref="SyncCourts"/>: the nationwide listing sweep (which archives new
 /// discoveries same-night as their details are synced).</item>
 /// <item><b>07:00 JST</b> — <see cref="ScheduleArchiveWork"/> (deadline-ordered archive backlog drain +
-/// due re-checks) then <see cref="Monitoring.SummarizeSweep"/> (anomaly alerts + storage watchdog), by
-/// which time the overnight sweep has normally finished.</item>
+/// due re-checks), <see cref="ScheduleResultsSync"/> (results for courts with a recent 開札), then
+/// <see cref="SummarizeSweep"/> (anomaly alerts + storage watchdog), by which time the overnight sweep
+/// has normally finished.</item>
 /// </list>
 /// Gated by the same kill-switch as the client — a disabled ingestion never sweeps (the enqueued messages
 /// simply no-op at the rate-limit handler), but the monitor still runs.
@@ -52,6 +53,7 @@ public sealed class NightlySweepScheduler(
                     break;
                 case Job.PostSweep:
                     await bus.PublishAsync(new ScheduleArchiveWork()).ConfigureAwait(false);
+                    await bus.PublishAsync(new ScheduleResultsSync()).ConfigureAwait(false);
                     await bus.PublishAsync(new SummarizeSweep()).ConfigureAwait(false);
                     break;
             }

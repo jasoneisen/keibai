@@ -69,6 +69,26 @@ app.MapPost("/monitor/run", async (IMessageBus bus) =>
     return Results.Accepted("/monitor/run", new { enqueued = "monitor" });
 });
 
+// Sale-results triggers: backfill one court's ~3 years of 売却結果, the whole nationwide backfill, or
+// sync one court's latest round.
+app.MapPost("/results/backfill/{courtId}", async (string courtId, IMessageBus bus) =>
+{
+    await bus.PublishAsync(new BackfillResults(courtId));
+    return Results.Accepted($"/results/backfill/{courtId}", new { enqueued = courtId });
+});
+
+app.MapPost("/results/backfill-all", async (IMessageBus bus) =>
+{
+    await bus.PublishAsync(new BackfillAllResults());
+    return Results.Accepted("/results/backfill-all", new { enqueued = "all-courts" });
+});
+
+app.MapPost("/results/sync/{courtId}", async (string courtId, IMessageBus bus) =>
+{
+    await bus.PublishAsync(new SyncRoundResults(courtId, DateOnly.FromDateTime(DateTime.UtcNow)));
+    return Results.Accepted($"/results/sync/{courtId}", new { enqueued = courtId });
+});
+
 app.MapStaticAssets();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 

@@ -13,4 +13,13 @@ public static class Fixtures
 
     /// <summary>A property-detail page.</summary>
     public static string Detail() => Read("detail_pr001_h05.html");
+
+    /// <summary>The 売却結果 prefecture page (ps007/h02) — carries fiscalYear/codeCls + the court list.</summary>
+    public static string SaleResultPrefPage() => Read("saleresult_pref_ps007_h02_tokyo.html");
+
+    /// <summary>The 売却結果 listing page 1 (ps007/h08) for a Tokyo court.</summary>
+    public static string SaleResultsListing() => Read("saleresults_ps007_h08_tokyo.html");
+
+    /// <summary>The 売却結果 listing page 2 (pager resultlist/pr002/h03).</summary>
+    public static string SaleResultsPage2() => Read("saleresults_pr002_h03_tokyo_p2.html");
 }

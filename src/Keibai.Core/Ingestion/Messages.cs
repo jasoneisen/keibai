@@ -44,8 +44,19 @@ public sealed record SyncRoundResults(string CourtId, DateOnly OpeningDate);
 /// One chunk of a court's historical-results backfill: page <paramref name="Page"/> of that court's
 /// 売却結果. Each handler does ONE page then enqueues the next (per-court/per-page chunking keeps every
 /// handler well under the 30-minute execution ceiling). BIT retains ~3 years of results.
+/// <paramref name="PreviousResultsBlobPath"/> carries page N-1's HTML forward so the pager can replay its
+/// <c>resultDetailForm</c> (null on page 1, which fetches fresh).
 /// </summary>
-public sealed record BackfillResults(string CourtId, int Page = 1);
+public sealed record BackfillResults(string CourtId, int Page = 1, string? PreviousResultsBlobPath = null);
+
+/// <summary>Fan out the nationwide results backfill: enqueue a page-1 <see cref="BackfillResults"/> per known court.</summary>
+public sealed record BackfillAllResults;
+
+/// <summary>
+/// Nightly: enqueue <see cref="SyncRoundResults"/> for every court whose tracked properties had a 開札
+/// in the last couple of days (results are published that evening). Idempotent upserts make re-runs safe.
+/// </summary>
+public sealed record ScheduleResultsSync;
 
 // --- Phase 2: monitoring ---
 

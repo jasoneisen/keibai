@@ -197,17 +197,21 @@ public sealed class CrawlRun
 /// </summary>
 public sealed class SaleResult
 {
-    /// <summary>Natural-key identity — see <see cref="MakeId"/> (<c>{CourtId}:{SaleUnitId}:{OpeningDate}</c>).</summary>
+    /// <summary>Natural-key identity — see <see cref="MakeId"/> (<c>{CourtId}:{CaseLabel}:{ItemNo}</c>).</summary>
     public required string Id { get; set; }
-    /// <summary>Owning property id (<c>{CourtId}:{SaleUnitId}</c>) when the property is also tracked.</summary>
-    public required string PropertyItemId { get; set; }
+    /// <summary>
+    /// Owning property id (<c>{CourtId}:{SaleUnitId}</c>) when the property is also tracked. Null for
+    /// historical backfill rows, whose property is long delisted (BIT's results list carries no sale-unit
+    /// id to link on — best-effort matching by case number is a later concern).
+    /// </summary>
+    public string? PropertyItemId { get; set; }
     /// <summary>BIT court code.</summary>
     public string? CourtId { get; set; }
-    /// <summary>BIT sale-unit id.</summary>
-    public string? SaleUnitId { get; set; }
+    /// <summary>物件番号 (item number within the case).</summary>
+    public string? ItemNo { get; set; }
     /// <summary>Case number as displayed on the results row (raw).</summary>
     public string? CaseLabel { get; set; }
-    /// <summary>開札 date.</summary>
+    /// <summary>開札 date, where the results view carries it (the full-history view does not).</summary>
     public DateOnly? OpeningDate { get; set; }
     /// <summary>売却価額 (winning bid, yen).</summary>
     public long? WinningBid { get; set; }
@@ -221,15 +225,12 @@ public sealed class SaleResult
     public DateTimeOffset CapturedAt { get; set; }
 
     /// <summary>
-    /// Deterministic identity for a result row. Keyed on court + sale unit + 開札 date so the same round's
-    /// result upserts across re-crawls. Falls back to the case label when a sale-unit id is absent.
+    /// Deterministic identity for a result row: court + case label + 物件番号, so re-crawling a court's
+    /// results upserts rather than duplicating. (BIT's full-history results list keys on case+item, not a
+    /// sale-unit id or 開札 date.)
     /// </summary>
-    public static string MakeId(string courtId, string? saleUnitId, string? caseLabel, DateOnly? openingDate)
-    {
-        var unit = string.IsNullOrEmpty(saleUnitId) ? (caseLabel ?? "?") : saleUnitId;
-        var date = openingDate?.ToString("yyyyMMdd") ?? "0";
-        return $"{courtId}:{unit}:{date}";
-    }
+    public static string MakeId(string courtId, string? caseLabel, string? itemNo) =>
+        $"{courtId}:{caseLabel ?? "?"}:{itemNo ?? "0"}";
 }
 
 /// <summary>

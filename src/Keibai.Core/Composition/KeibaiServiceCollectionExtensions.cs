@@ -59,7 +59,7 @@ public static class KeibaiServiceCollectionExtensions
                     .Index(x => x.Sha256);
                 opts.Schema.For<SaleResult>()
                     .Identity(x => x.Id)
-                    .Index(x => x.PropertyItemId)
+                    .Index(x => x.PropertyItemId!)
                     .Index(x => x.CourtId!)
                     .Index(x => x.OpeningDate!);
                 opts.Schema.For<DailyStats>().Identity(x => x.Id);

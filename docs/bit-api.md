@@ -198,10 +198,59 @@ containing 支部). This discovers all ~147 courts/branches organically from the
 separate court index. (A dedicated court-list endpoint was probed — `/app/schedule/...` returns
 a Spring JSON 404 — none found; harvest-from-listings is the robust path.)
 
+## 売却結果 (sale results) flow — Phase 2 (reverse-engineered 2026-07-15)
+
+BIT exposes several search **tabs/axes**, each a different Spring module (`submitTab(n)` in
+`property/common.js`): `ps001` block · **`ps002` 期間入札 property search (Phase 1)** · `ps003`
+沿線 (rail route) · `ps004` court · `ps005` case-number. 売却結果 is a SEPARATE flow, NOT a tab:
+the 売却結果 nav link runs `tranArea('result','')` → `POST /app/area/pk001/h01` (`tabId=result`).
+(The Phase-1 note guessing `tranResultSearch('2')`→`ps002/h17` was wrong — that is just the
+block-level *property* listing. Ignore it.)
+
+The mapped, **plain-HTTP-replayable, stateless** flow (fixtures under `tests/fixtures/bit/`):
+
+```
+POST /app/area/pk001/h02        blockCls=03&tabId=result   → 売却結果検索 page (peroidResultSearchForm)
+POST /app/peroidsearch/ps007/h02  (prefecture select)      → yields pFiscalYear + pCodeCls + court radios
+POST /app/peroidsearch/ps007/h08  (by-court search)        → 売却結果一覧 page 1 (+ resultDetailForm)
+POST /app/resultlist/pr002/h03    (pager, currPage=N)      → 売却結果一覧 page N
+```
+
+Key fields (from a live capture via Playwright + HTTP replay):
+
+| endpoint | required body fields |
+|---|---|
+| `ps007/h02` | `prefecturesId`, `blockCls`, `blockName`, `saleType=1`, `peroidSaleCls`×4, `saleClsList=1,2,3,4`, `tabId=result` |
+| `ps007/h08` | `courtId`, **`saleScdId`** (see below), `fiscalYear`, `codeCls` (both from the h02 page's `#pFiscalYear`/`#pCodeCls`), `searchType=0`, `saleType=1`, `peroidSaleCls`×4, `prefecturesId`, `blockCls`, `blockName`, `tabId=result`, `currentPage`, `pageSize` |
+| `pr002/h03` | replay the results page's full **`resultDetailForm`** with `currPage=N` (carries `totalCount`, `saleScdId`, `fiscalYear`, `codeCls`, …) |
+
+- **`saleScdId` EMPTY ⇒ the court's FULL retained history** (Tokyo 本庁 = `totalCount` **148**).
+  A specific `saleScdId` (e.g. `20000014083`, obtained from the `ps007/h04` court-select AJAX)
+  scopes to a single 開札 round (17 rows). We want the full history, so we send `saleScdId=` empty
+  and **skip `h04` entirely** (`h04` 500s on raw HTTP replay anyway — it needs full browser state).
+- **No cookies / no session token needed for h08** — verified it returns results in a fresh cookie
+  jar given the right `fiscalYear`/`codeCls`. `h02` is only needed to READ those two opaque values.
+- **Pagination:** the results-page pager is `getData(page)` (in `/app/result/result.js`) → reposts
+  `#resultDetailForm` to `resultlist/pr002/h03` with **`currPage`** (NOT `currentPage`). Verified
+  page 2/3 return distinct case sets. `pageSize` is honoured at 10.
+- **Row shape** (`bit__currentSearchCondition_regionBox`; ⚠️ the same class wraps a search-condition
+  *summary* box with no case number — skip boxes without one): 種別 badge, case number
+  (令和07年(ケ)第476号), `売却価額` (winning bid, or `-` when not sold), `売却基準価額`, 所在地,
+  `物件番号`, `開札結果` (売却 / 特別売却 / 取下げ / 不売), `入札者数（人）`, 落札者資格. The
+  full-history view carries **no per-row 開札 date** (the per-`saleScdId` view groups by date) — so
+  `SaleResult` keys on court+case+物件番号 and leaves `OpeningDate` null in a backfill.
+
+`fiscalYear=000805`, `codeCls=2` observed for Tokyo on 2026-07-15 (likely the current fiscal
+period; always read them fresh from `ps007/h02`, never hard-code).
+
 ## Endpoints NOT to hit / dead ends probed
 
 - `/app/schedule/pk002/h01` → JSON `404` (guessed path; the schedule directory referenced in
   the brief is a human `schedule/index.html`, not part of the search JSON flow — deferred).
+- `/app/peroidsearch/ps007/h04` (court-select AJAX) → HTTP `500` on raw HTTP replay; it needs full
+  browser session state. NOT required — send an empty `saleScdId` to h08 instead (full history).
+- `/app/peroidsearch/ps007/h03` (all-area results, `pSearchType=1`) → `500` without server-side
+  prefecture state; the by-court `h08` path is the robust one.
 - `/app/areaselect/ps002/h17` and `/app/areaselect/ps002/h05` with a partial body → HTTP 500
   (application error, **not** a block — distinguish these from a real block page).
 

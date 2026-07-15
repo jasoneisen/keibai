@@ -76,6 +76,37 @@ public sealed class BitClient
     }
 
     /// <summary>
+    /// Fetch the FIRST page of a court's 売却結果 (sale results). Two BIT requests: the prefecture-select
+    /// step (<c>ps007/h02</c>, which yields the opaque <c>fiscalYear</c>/<c>codeCls</c> the search needs)
+    /// then the by-court search (<c>ps007/h08</c>, EMPTY saleScdId = the court's full retained history).
+    /// Returns the parsed page AND the raw results HTML (the pager replays its <c>resultDetailForm</c>).
+    /// </summary>
+    public async Task<(SaleResultPage Page, string Html)> GetCourtSaleResultsFirstPageAsync(
+        string prefectureId, string courtId, int pageSize, CancellationToken ct = default)
+    {
+        var contextHtml = await PostPairsForStringAsync(
+            "/app/peroidsearch/ps007/h02", ResultForms.PrefecturePairs(prefectureId), ct).ConfigureAwait(false);
+        var context = ResultForms.ParseCourtContext(contextHtml);
+
+        var pairs = ResultForms.CourtSearchPairs(
+            prefectureId, courtId, context.FiscalYear, context.CodeCls, pageSize);
+        var html = await PostPairsForStringAsync("/app/peroidsearch/ps007/h08", pairs, ct).ConfigureAwait(false);
+        return (SaleResultParser.Parse(html), html);
+    }
+
+    /// <summary>
+    /// Fetch a subsequent 売却結果 page via the pager <c>resultlist/pr002/h03</c>, replaying the previous
+    /// page's full <c>resultDetailForm</c> envelope with <c>currPage</c> set.
+    /// </summary>
+    public async Task<(SaleResultPage Page, string Html)> GetSaleResultsNextPageAsync(
+        string previousResultsHtml, int page, int pageSize, CancellationToken ct = default)
+    {
+        var form = ResultForms.PagerForm(previousResultsHtml, page, pageSize);
+        var html = await PostFormForStringAsync("/app/resultlist/pr002/h03", form, ct).ConfigureAwait(false);
+        return (SaleResultParser.Parse(html), html);
+    }
+
+    /// <summary>
     /// Check whether a 3点セット PDF is still downloadable (BIT deletes them when bidding ends).
     /// Returns true when the availability endpoint answers "success".
     /// </summary>
