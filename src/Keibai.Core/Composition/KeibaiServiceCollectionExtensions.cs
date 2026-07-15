@@ -62,6 +62,12 @@ public static class KeibaiServiceCollectionExtensions
                     .Index(x => x.PropertyItemId!)
                     .Index(x => x.CourtId!)
                     .Index(x => x.OpeningDate!);
+                opts.Schema.For<AuctionCase>().Identity(x => x.Id).Index(x => x.CourtId);
+                opts.Schema.For<AuctionRound>()
+                    .Identity(x => x.Id)
+                    .Index(x => x.CourtId)
+                    .Index(x => x.OpeningDate)
+                    .Index(x => x.Status);
                 opts.Schema.For<DailyStats>().Identity(x => x.Id);
                 opts.Schema.For<CrawlRun>().Index(x => x.CourtId!).Index(x => x.PrefectureId!);
                 opts.Schema.For<RawCapture>().Index(x => x.ContentHash);

@@ -200,6 +200,64 @@ public sealed class PropertyItemDetail
 }
 
 /// <summary>
+/// A 競売 case (事件) — one court case that may bundle several 物件/sale units sold together or
+/// separately. Materialized by grouping <see cref="PropertyItem"/>s on court + case number (BIT exposes
+/// no case entity; the relationship is derived). Identity = <c>{CourtId}:{CaseLabel}</c>.
+/// </summary>
+public sealed class AuctionCase
+{
+    /// <summary><c>{CourtId}:{CaseLabel}</c> — the Marten identity.</summary>
+    public required string Id { get; set; }
+    /// <summary>BIT court code.</summary>
+    public required string CourtId { get; set; }
+    /// <summary>JIS prefecture code.</summary>
+    public string? PrefectureId { get; set; }
+    /// <summary>Parsed case number.</summary>
+    public CaseNumber? Case { get; set; }
+    /// <summary>Raw case label as displayed (令和07年(ケ)第476号).</summary>
+    public string? CaseLabel { get; set; }
+    /// <summary>The sale-unit <see cref="PropertyItem"/> ids in this case.</summary>
+    public List<string> PropertyItemIds { get; set; } = [];
+    /// <summary>Number of sale units in the case.</summary>
+    public int PropertyCount { get; set; }
+    /// <summary>When this case was last (re)built from the property store.</summary>
+    public DateTimeOffset LastBuilt { get; set; }
+}
+
+/// <summary>
+/// A bidding round (期間入札) at a court, identified by its 開札期日. Materialized by grouping
+/// <see cref="PropertyItem"/>s on court + 開札期日 (BIT's <c>saleScdId</c> spans multiple 開札 dates, so
+/// the clean round grain is the 開札 date). Identity = <c>{CourtId}:{OpeningDate:yyyy-MM-dd}</c>.
+/// </summary>
+public sealed class AuctionRound
+{
+    /// <summary><c>{CourtId}:{OpeningDate:yyyy-MM-dd}</c> — the Marten identity.</summary>
+    public required string Id { get; set; }
+    /// <summary>BIT court code.</summary>
+    public required string CourtId { get; set; }
+    /// <summary>JIS prefecture code.</summary>
+    public string? PrefectureId { get; set; }
+    /// <summary>開札期日 — the bid-opening day (the round key).</summary>
+    public DateOnly OpeningDate { get; set; }
+    /// <summary>閲覧開始日 — documents viewable from.</summary>
+    public DateOnly? ViewingStart { get; set; }
+    /// <summary>入札期間 start.</summary>
+    public DateOnly? BiddingStart { get; set; }
+    /// <summary>入札期間 end.</summary>
+    public DateOnly? BiddingEnd { get; set; }
+    /// <summary>売却決定期日.</summary>
+    public DateOnly? SaleDecisionDate { get; set; }
+    /// <summary>Sale-unit <see cref="PropertyItem"/> ids opening on this date at this court.</summary>
+    public List<string> PropertyItemIds { get; set; } = [];
+    /// <summary>Number of sale units in the round.</summary>
+    public int PropertyCount { get; set; }
+    /// <summary>Derived lifecycle: upcoming / viewing / bidding / closed / opened.</summary>
+    public string Status { get; set; } = "unknown";
+    /// <summary>When this round was last (re)built.</summary>
+    public DateTimeOffset LastBuilt { get; set; }
+}
+
+/// <summary>
 /// An archived 3点セット (or component) PDF. Identity is <c>{PropertyItemId}:{Sha256}</c>: idempotent
 /// per property (re-downloading identical bytes maps to the same record) while still letting two
 /// different properties each keep their own record even in the astronomically-unlikely case of identical
