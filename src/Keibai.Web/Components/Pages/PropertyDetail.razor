@@ -1,0 +1,312 @@
+@page "/jp/property/{courtId}/{saleUnitId}"
+@using System.Globalization
+@* Static-SSR property-detail composite — a personal research view that surfaces EVERYTHING captured for a
+   sale unit (物件): overview, schedule, typed attribute rollups, archived 3点セット (with version history),
+   the sale result, external links, the full per-物件 attribute set, and the case's other 物件. No render
+   mode: reads happen in OnInitializedAsync and the star toggle is a plain POST (Post-Redirect-Get). *@
+@inject IPropertyReader Reader
+@inject IWatchlist Watchlist
+
+@if (_view is { } view)
+{
+    var item = view.Item;
+    <PageTitle>@(item.Case?.Raw ?? item.Id) — 競売 Keibai</PageTitle>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-4">
+        <div>
+            <h1 class="h3 mb-1">@(item.Case?.Raw ?? "(no case number)")</h1>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="text-muted">@Display.TypeLabel(item.SaleCls)</span>
+                <span class="badge @Display.StatusBadgeClass(view.Status)">@Display.StatusLabel(view.Status)</span>
+            </div>
+        </div>
+        <form method="post" action="/jp/watch">
+            <input type="hidden" name="id" value="@item.Id" />
+            <input type="hidden" name="return" value="@ReturnUrl()" />
+            @if (_watched)
+            {
+                <button type="submit" class="btn btn-outline-warning">
+                    <i class="bi bi-star-fill text-warning me-1"></i>Watching
+                </button>
+            }
+            else
+            {
+                <button type="submit" class="btn btn-outline-secondary">
+                    <i class="bi bi-star me-1"></i>Watch
+                </button>
+            }
+        </form>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-header fw-semibold">Overview</div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Prefecture 都道府県</dt>
+                        <dd class="col-sm-8">@view.PrefectureName</dd>
+                        <dt class="col-sm-4">Court 裁判所</dt>
+                        <dd class="col-sm-8">@(view.Court?.Name ?? "—")</dd>
+                        <dt class="col-sm-4">Listing address</dt>
+                        <dd class="col-sm-8">@(string.IsNullOrWhiteSpace(item.RawAddress) ? "—" : item.RawAddress)</dd>
+                        <dt class="col-sm-4">Detail address 地番</dt>
+                        <dd class="col-sm-8">@(string.IsNullOrWhiteSpace(item.DetailAddress) ? "—" : item.DetailAddress)</dd>
+                        <dt class="col-sm-4">売却基準価額</dt>
+                        <dd class="col-sm-8 jp-num">@Display.Yen(item.SaleStandardAmount)</dd>
+                        <dt class="col-sm-4">買受可能価額</dt>
+                        <dd class="col-sm-8 jp-num">@Display.Yen(item.MinimumBidAmount)</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header fw-semibold">Schedule 日程</div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5">閲覧開始 Viewing</dt>
+                        <dd class="col-sm-7 jp-num">@Display.Date(item.ViewingStart)</dd>
+                        <dt class="col-sm-5">入札期間 Bidding</dt>
+                        <dd class="col-sm-7 jp-num">@Display.Date(item.BiddingStart) – @Display.Date(item.BiddingEnd)</dd>
+                        <dt class="col-sm-5">開札期日 Opening</dt>
+                        <dd class="col-sm-7 jp-num">@Display.Date(item.OpeningDate)</dd>
+                        <dt class="col-sm-5">売却決定期日 Decision</dt>
+                        <dd class="col-sm-7 jp-num">@Display.Date(item.SaleDecisionDate)</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header fw-semibold">Attributes 属性</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            @foreach (var (label, value) in AttributeRows(item))
+                            {
+                                <tr>
+                                    <th scope="row" class="fw-normal text-muted">@label</th>
+                                    <td class="jp-num">@value</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-header fw-semibold">Documents 3点セット</div>
+                <div class="card-body">
+                    @if (view.Documents.Count > 0)
+                    {
+                        @foreach (var group in view.Documents.GroupBy(d => d.Kind))
+                        {
+                            <div class="mb-3">
+                                <div class="fw-semibold small text-uppercase text-muted mb-1">@group.Key</div>
+                                <ul class="list-unstyled mb-0">
+                                    @foreach (var doc in group)
+                                    {
+                                        <li class="mb-1">
+                                            <a href="/jp/doc/@item.CourtId/@item.SaleUnitId/@doc.Sha256">
+                                                <i class="bi bi-file-earmark-pdf me-1"></i>@doc.Kind
+                                            </a>
+                                            <span class="badge text-bg-light ms-1">v@doc.Version</span>
+                                            <span class="text-muted small ms-1 jp-num">@FormatSize(doc.ByteSize)</span>
+                                            <span class="text-muted small ms-1 jp-num">
+                                                @Display.Date(DateOnly.FromDateTime(doc.FetchedAt.DateTime))
+                                            </span>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted mb-0">No archived documents.</p>
+                    }
+                </div>
+            </div>
+
+            @if (view.Result is { } result)
+            {
+                <div class="card mb-4">
+                    <div class="card-header fw-semibold">Sale result 売却結果</div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-5">Outcome</dt>
+                            <dd class="col-sm-7">@(string.IsNullOrWhiteSpace(result.Outcome) ? "—" : result.Outcome)</dd>
+                            <dt class="col-sm-5">売却価額 Winning bid</dt>
+                            <dd class="col-sm-7 jp-num">@Display.Yen(result.WinningBid)</dd>
+                            <dt class="col-sm-5">入札件数 Bids</dt>
+                            <dd class="col-sm-7 jp-num">@(result.BidCount?.ToString() ?? "—")</dd>
+                            @if (result.WinningBid is { } bid && result.SaleStandardAmount is { } standard && standard > 0)
+                            {
+                                <dt class="col-sm-5">Bid : standard</dt>
+                                <dd class="col-sm-7 jp-num">@Display.Ratio((double)bid / standard)</dd>
+                            }
+                        </dl>
+                    </div>
+                </div>
+            }
+
+            <div class="card mb-4">
+                <div class="card-header fw-semibold">External 外部リンク</div>
+                <div class="card-body">
+                    <p class="mb-1">
+                        <a href="@Display.GoogleMapsUrl(item.DetailAddress ?? item.RawAddress)"
+                           target="_blank" rel="noopener">
+                            <i class="bi bi-geo-alt me-1"></i>Open in Google Maps
+                        </a>
+                    </p>
+                    <p class="text-muted small mb-3">
+                        Address is a 地番 (parcel number) and approximate — the geocode is not trusted.
+                    </p>
+                    <p class="mb-0">
+                        <a href="https://www.bit.courts.go.jp/" target="_blank" rel="noopener">
+                            <i class="bi bi-box-arrow-up-right me-1"></i>Search on BIT
+                        </a>
+                        <span class="text-muted small ms-1">(BIT has no stable deep link)</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (item.Items.Count > 0)
+    {
+        <h2 class="h5 mt-2 mb-3">物件 detail (@item.ItemCount item@(item.ItemCount == 1 ? "" : "s"))</h2>
+        <div class="row g-4">
+            @foreach (var d in item.Items)
+            {
+                <div class="col-lg-6">
+                    <div class="card h-100">
+                        <div class="card-header fw-semibold">
+                            物件 @(string.IsNullOrWhiteSpace(d.ItemNo) ? "?" : d.ItemNo)
+                            @if (!string.IsNullOrWhiteSpace(d.Kind))
+                            {
+                                <span class="text-muted fw-normal">(@d.Kind)</span>
+                            }
+                        </div>
+                        <div class="card-body p-0">
+                            @if (d.Attributes.Count > 0)
+                            {
+                                <table class="table table-sm mb-0">
+                                    <tbody>
+                                        @foreach (var (key, value) in d.Attributes)
+                                        {
+                                            <tr>
+                                                <th scope="row" class="fw-normal text-muted">@key</th>
+                                                <td class="jp-num">@value</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            }
+                            else
+                            {
+                                <p class="text-muted mb-0 p-3">No attributes captured.</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (view.CaseSiblings.Count > 0)
+    {
+        <h2 class="h5 mt-4 mb-3">Other 物件 in this case</h2>
+        <ul class="list-group">
+            @foreach (var s in view.CaseSiblings)
+            {
+                <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <a href="/jp/property/@s.CourtId/@s.SaleUnitId">@(s.Case?.Raw ?? s.Id)</a>
+                    <span class="text-muted small">@(s.DetailAddress ?? s.RawAddress ?? "—")</span>
+                </li>
+            }
+        </ul>
+    }
+}
+else if (_loaded)
+{
+    <PageTitle>Not found — 競売 Keibai</PageTitle>
+    <div class="alert alert-warning" role="alert">
+        <h1 class="h4 alert-heading">Property not found</h1>
+        <p class="mb-0">
+            No property matches this court and sale-unit id.
+            <a href="/jp" class="alert-link">Back to search</a>.
+        </p>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    public HttpContext? HttpContext { get; set; }
+
+    [Parameter]
+    public string CourtId { get; set; } = "";
+
+    [Parameter]
+    public string SaleUnitId { get; set; } = "";
+
+    private PropertyDetailView? _view;
+    private bool _loaded;
+    private bool _watched;
+
+    // The current path+query, used as the star-toggle POST's redirect target (Post-Redirect-Get).
+    private string ReturnUrl() =>
+        HttpContext is { } http ? http.Request.Path.ToString() + http.Request.QueryString.ToString() : "/jp";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var view = await Reader.GetDetailAsync(CourtId, SaleUnitId);
+        if (view is null)
+        {
+            if (HttpContext is not null)
+            {
+                HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
+            }
+
+            _loaded = true;
+            return;
+        }
+
+        var watched = await Watchlist.IsWatchedAsync(view.Item.Id);
+        _view = view;
+        _watched = watched;
+        _loaded = true;
+    }
+
+    // The non-null/non-empty typed rollups, in the brief's order, for the Attributes card.
+    private static IEnumerable<(string Label, string Value)> AttributeRows(PropertyItem i)
+    {
+        if (!string.IsNullOrWhiteSpace(i.Structure)) yield return ("構造 Structure", i.Structure);
+        if (!string.IsNullOrWhiteSpace(i.RoomLayout)) yield return ("間取り Layout", i.RoomLayout);
+        if (i.LandAreaSqm is { } land) yield return ("土地面積 Land m²", land.ToString(CultureInfo.InvariantCulture));
+        if (i.BuildingAreaSqm is { } bld) yield return ("床面積 Building m²", bld.ToString(CultureInfo.InvariantCulture));
+        if (i.ExclusiveAreaSqm is { } exc) yield return ("専有面積 Exclusive m²", exc.ToString(CultureInfo.InvariantCulture));
+        if (!string.IsNullOrWhiteSpace(i.BuildYearMonth)) yield return ("築年月 Built", i.BuildYearMonth);
+        if (!string.IsNullOrWhiteSpace(i.Floor)) yield return ("階 Floor", i.Floor);
+        if (i.TotalUnits is { } units) yield return ("総戸数 Total units", units.ToString(CultureInfo.InvariantCulture));
+        if (i.AdminFeeYen is { } fee) yield return ("管理費等 Admin fee", Display.Yen(fee));
+        if (!string.IsNullOrWhiteSpace(i.LandCategory)) yield return ("地目 Land category", i.LandCategory);
+        if (!string.IsNullOrWhiteSpace(i.ZoningUse)) yield return ("用途地域 Zoning", i.ZoningUse);
+        if (!string.IsNullOrWhiteSpace(i.BuildingCoverageRatio)) yield return ("建ぺい率 Coverage", i.BuildingCoverageRatio);
+        if (!string.IsNullOrWhiteSpace(i.FloorAreaRatio)) yield return ("容積率 Floor-area ratio", i.FloorAreaRatio);
+        if (!string.IsNullOrWhiteSpace(i.LandRights)) yield return ("敷地利用権 Land rights", i.LandRights);
+        if (!string.IsNullOrWhiteSpace(i.Occupant)) yield return ("占有者 Occupant", i.Occupant);
+        if (!string.IsNullOrWhiteSpace(i.HouseNumber)) yield return ("家屋番号 House no.", i.HouseNumber);
+    }
+
+    // Human-readable byte size (KB/MB), matching the personal-research tone of the page.
+    private static string FormatSize(long bytes)
+    {
+        const double kb = 1024d;
+        const double mb = kb * 1024d;
+        return bytes >= mb
+            ? (bytes / mb).ToString("0.0", CultureInfo.InvariantCulture) + " MB"
+            : (bytes / kb).ToString("0.0", CultureInfo.InvariantCulture) + " KB";
+    }
+}
