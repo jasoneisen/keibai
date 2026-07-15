@@ -11,8 +11,14 @@ public static class Fixtures
     /// <summary>The Tokyo (prefecture 13) result-listing page.</summary>
     public static string TokyoResults() => Read("results_ps002_h05_tokyo.html");
 
-    /// <summary>A property-detail page.</summary>
+    /// <summary>A property-detail page (土地 / land, single 物件).</summary>
     public static string Detail() => Read("detail_pr001_h05.html");
+
+    /// <summary>A 戸建 detail page — a multi-物件 card (物件1 土地 + 物件2 建物).</summary>
+    public static string DetailKodate() => Read("detail_kodate_pr001_h05.html");
+
+    /// <summary>A マンション (区分所有建物) detail page.</summary>
+    public static string DetailMansion() => Read("detail_mansion_pr001_h05.html");
 
     /// <summary>The 売却結果 prefecture page (ps007/h02) — carries fiscalYear/codeCls + the court list.</summary>
     public static string SaleResultPrefPage() => Read("saleresult_pref_ps007_h02_tokyo.html");

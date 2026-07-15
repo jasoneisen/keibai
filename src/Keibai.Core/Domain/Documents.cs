@@ -106,6 +106,58 @@ public sealed class PropertyItem
     /// <summary>売却決定期日 — the sale-decision day.</summary>
     public DateOnly? SaleDecisionDate { get; set; }
 
+    // --- Detail attributes (Phase 2 enrichment; a card/sale-unit bundles one or more 物件) ---
+
+    /// <summary>
+    /// Every 物件 in this sale unit with its full attribute set (the generic label→value map lifted from
+    /// the detail page's 物件明細 tables). Captures EVERYTHING BIT shows, per item, whether or not it is
+    /// also promoted to a typed field below — so no attribute is ever lost.
+    /// </summary>
+    public List<PropertyItemDetail> Items { get; set; } = [];
+
+    /// <summary>Number of 物件 bundled in this sale unit (<c>Items.Count</c>).</summary>
+    public int ItemCount { get; set; }
+
+    /// <summary>所在地 from the detail page (地番; may be more precise than the listing <see cref="RawAddress"/>).</summary>
+    public string? DetailAddress { get; set; }
+
+    // Typed rollups (best-effort, first non-empty across the bundled 物件) for search / indexing / profiling.
+
+    /// <summary>家屋番号.</summary>
+    public string? HouseNumber { get; set; }
+    /// <summary>地目（登記）— land category.</summary>
+    public string? LandCategory { get; set; }
+    /// <summary>用途地域 — zoning.</summary>
+    public string? ZoningUse { get; set; }
+    /// <summary>建ぺい率 — building coverage ratio (as displayed, e.g. <c>60%</c>).</summary>
+    public string? BuildingCoverageRatio { get; set; }
+    /// <summary>容積率 — floor-area ratio (as displayed).</summary>
+    public string? FloorAreaRatio { get; set; }
+    /// <summary>構造（登記）— building structure.</summary>
+    public string? Structure { get; set; }
+    /// <summary>間取り — room layout.</summary>
+    public string? RoomLayout { get; set; }
+    /// <summary>敷地利用権 — site-use right (所有権 / 賃借権 …).</summary>
+    public string? LandRights { get; set; }
+    /// <summary>占有者 — occupancy status (role only, never a name; e.g. あり / 債務者・所有者).</summary>
+    public string? Occupant { get; set; }
+    /// <summary>築年月 — build year/month, as displayed (e.g. 平成29年6月).</summary>
+    public string? BuildYearMonth { get; set; }
+    /// <summary>Gregorian build year parsed from <see cref="BuildYearMonth"/>.</summary>
+    public int? BuildYear { get; set; }
+    /// <summary>階 — floor (マンション).</summary>
+    public string? Floor { get; set; }
+    /// <summary>総戸数 — total units in the building (マンション).</summary>
+    public int? TotalUnits { get; set; }
+    /// <summary>管理費等 (yen/month) — マンション.</summary>
+    public long? AdminFeeYen { get; set; }
+    /// <summary>土地面積（登記）in m² (best-effort).</summary>
+    public double? LandAreaSqm { get; set; }
+    /// <summary>床面積（登記）in m² (戸建; first floor / first value, best-effort).</summary>
+    public double? BuildingAreaSqm { get; set; }
+    /// <summary>専有面積（登記）in m² (マンション, best-effort).</summary>
+    public double? ExclusiveAreaSqm { get; set; }
+
     // --- Archival state (Phase 2) ---
 
     /// <summary>When this property's 3点セット was last successfully archived (null = never).</summary>
@@ -129,6 +181,22 @@ public sealed class PropertyItem
     public bool Delisted { get; set; }
     /// <summary>Reason for delisting, if any.</summary>
     public string? DelistedReason { get; set; }
+}
+
+/// <summary>
+/// One 物件 within a sale unit, with its complete attribute set from the detail page's 物件明細 table.
+/// Kind is the per-item 種別 (土地 / 建物 / 区分所有建物), distinct from the card-level
+/// <see cref="PropertyItem.SaleCls"/>. <see cref="Attributes"/> is the raw label→value map — every field
+/// BIT renders — so nothing is lost even when it is not promoted to a typed rollup.
+/// </summary>
+public sealed class PropertyItemDetail
+{
+    /// <summary>物件番号.</summary>
+    public string? ItemNo { get; set; }
+    /// <summary>種別 (土地 / 建物 / 区分所有建物).</summary>
+    public string? Kind { get; set; }
+    /// <summary>Every attribute label → value from this 物件's detail table.</summary>
+    public Dictionary<string, string> Attributes { get; set; } = [];
 }
 
 /// <summary>

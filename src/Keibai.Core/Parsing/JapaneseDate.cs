@@ -75,6 +75,31 @@ public static partial class JapaneseDate
         return (start, end);
     }
 
+    // 令和/平成/昭和 (元 or NN) 年 — a year with no month/day (e.g. 築年月 "平成29年6月").
+    [GeneratedRegex(@"(令和|平成|昭和)\s*(元|\d{1,2})\s*年", RegexOptions.CultureInvariant)]
+    private static partial Regex EraYearOnly();
+
+    /// <summary>
+    /// Gregorian year from a 和暦 year expression like <c>平成29年6月</c> → 2017. Returns null when no era
+    /// year is present.
+    /// </summary>
+    public static int? Year(string? text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return null;
+        }
+
+        var m = EraYearOnly().Match(NormalizeDigits(text));
+        if (!m.Success || !EraBase.TryGetValue(m.Groups[1].Value, out var eraBase))
+        {
+            return null;
+        }
+
+        var eraYear = m.Groups[2].Value == "元" ? 1 : int.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture);
+        return eraBase + eraYear;
+    }
+
     /// <summary>Map full-width digits (０–９) to ASCII so the numeric groups match.</summary>
     private static string NormalizeDigits(string s)
     {

@@ -184,6 +184,10 @@ public static class IngestionHandler
         item.SaleStandardAmount = detail.SaleStandardAmount ?? item.SaleStandardAmount;
         item.MinimumBidAmount = detail.MinimumBidAmount ?? item.MinimumBidAmount;
 
+        // Capture the full per-物件 attribute set + typed rollups (land/floor/exclusive area, structure,
+        // 築年月, 管理費, occupancy, zoning, …) — everything BIT renders on the detail page.
+        DetailParser.ApplyAttributeRollups(item, detail.Items);
+
         session.Store(item);
         await session.SaveChangesAsync(ct).ConfigureAwait(false);
 

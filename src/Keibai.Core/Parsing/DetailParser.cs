@@ -20,7 +20,8 @@ public sealed record PropertyDetail(
     DateOnly? OpeningDate,
     DateOnly? SaleDecisionDate,
     long? SaleStandardAmount,
-    long? MinimumBidAmount);
+    long? MinimumBidAmount,
+    IReadOnlyList<PropertyItemDetail> Items);
 
 /// <summary>Parses BIT's property-detail page (fixture <c>detail_pr001_h05.html</c>).</summary>
 public static partial class DetailParser
@@ -54,11 +55,152 @@ public static partial class DetailParser
         var saleCls = ParseSaleCls(doc);
         var saleStandard = YenAfterLabel(text, "売却基準価額");
         var minimumBid = YenAfterLabel(text, "買受可能価額");
+        var items = ParseItems(doc);
 
         return new PropertyDetail(
             saleUnitId, courtId, caseNo, lat, lng, hasPdf,
-            saleCls, viewingStart, bidStart, bidEnd, openingDate, saleDecision, saleStandard, minimumBid);
+            saleCls, viewingStart, bidStart, bidEnd, openingDate, saleDecision, saleStandard, minimumBid, items);
     }
+
+    /// <summary>
+    /// Parse every 物件's full attribute set from the detail page's 物件明細 tables
+    /// (<c>bit__paragraphBreaksTable_th</c> label → <c>_td</c> value). A new item begins at each 種別 row.
+    /// Captures ALL labels (nothing dropped), normalizing half/full-width parens so 構造(現況) and
+    /// 構造（現況） are one key.
+    /// </summary>
+    public static List<PropertyItemDetail> ParseItems(HtmlDocument doc)
+    {
+        var items = new List<PropertyItemDetail>();
+        var ths = doc.DocumentNode.SelectNodes("//div[contains(@class,'bit__paragraphBreaksTable_th')]");
+        if (ths is null)
+        {
+            return items;
+        }
+
+        PropertyItemDetail? current = null;
+        foreach (var th in ths)
+        {
+            var label = NormalizeLabel(HtmlEntity.DeEntitize(th.InnerText).Trim());
+            if (label.Length == 0)
+            {
+                continue;
+            }
+
+            var td = th.SelectSingleNode(
+                "following-sibling::div[contains(@class,'bit__paragraphBreaksTable_td')][1]");
+            var value = TdValue(td);
+
+            if (label == "種別" || current is null)
+            {
+                current = new PropertyItemDetail { Kind = label == "種別" ? value : null };
+                items.Add(current);
+            }
+
+            if (label == "物件番号")
+            {
+                current.ItemNo = value;
+            }
+
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                current.Attributes[label] = value;
+            }
+        }
+
+        return items;
+    }
+
+    /// <summary>
+    /// Copy the parsed <paramref name="items"/> onto the property and derive typed rollups (first non-empty
+    /// value across the bundled 物件 — so a 戸建 card's land item supplies land area and its building item
+    /// supplies floor area / 築年月).
+    /// </summary>
+    public static void ApplyAttributeRollups(PropertyItem item, IReadOnlyList<PropertyItemDetail> items)
+    {
+        item.Items = items.ToList();
+        item.ItemCount = items.Count;
+
+        string? Attr(string label) => items
+            .Select(i => i.Attributes.GetValueOrDefault(label))
+            .FirstOrDefault(v => !string.IsNullOrWhiteSpace(v));
+
+        item.DetailAddress = Attr("所在地") ?? item.DetailAddress;
+        item.HouseNumber = Attr("家屋番号") ?? item.HouseNumber;
+        item.LandCategory = Attr("地目（登記）") ?? item.LandCategory;
+        item.ZoningUse = Attr("用途地域") ?? item.ZoningUse;
+        item.BuildingCoverageRatio = Attr("建ぺい率") ?? item.BuildingCoverageRatio;
+        item.FloorAreaRatio = Attr("容積率") ?? item.FloorAreaRatio;
+        item.Structure = Attr("構造（登記）") ?? item.Structure;
+        item.RoomLayout = Attr("間取り") ?? item.RoomLayout;
+        item.LandRights = Attr("敷地利用権") ?? item.LandRights;
+        item.Occupant = Attr("占有者") ?? item.Occupant;
+        item.Floor = Attr("階") ?? item.Floor;
+        item.BuildYearMonth = Attr("築年月") ?? item.BuildYearMonth;
+        item.BuildYear = JapaneseDate.Year(item.BuildYearMonth) ?? item.BuildYear;
+        item.TotalUnits = ParseInt(Attr("総戸数")) ?? item.TotalUnits;
+        item.AdminFeeYen = ParseYenString(Attr("管理費等")) ?? item.AdminFeeYen;
+        item.LandAreaSqm = ParseArea(Attr("土地面積（登記）")) ?? item.LandAreaSqm;
+        item.BuildingAreaSqm = ParseArea(Attr("床面積（登記）")) ?? item.BuildingAreaSqm;
+        item.ExclusiveAreaSqm = ParseArea(Attr("専有面積（登記）")) ?? item.ExclusiveAreaSqm;
+    }
+
+    private static string TdValue(HtmlNode? td)
+    {
+        if (td is null)
+        {
+            return string.Empty;
+        }
+
+        var span = td.SelectNodes(".//span")?.FirstOrDefault(s => !string.IsNullOrWhiteSpace(s.InnerText));
+        var raw = span?.InnerText ?? td.InnerText;
+        return System.Text.RegularExpressions.Regex.Replace(
+            HtmlEntity.DeEntitize(raw ?? string.Empty).Trim(), @"\s+", " ");
+    }
+
+    // Normalize half-width ()/() parens to full-width so 構造(現況) and 構造（現況） collapse to one label.
+    private static string NormalizeLabel(string label) =>
+        label.Replace('(', '（').Replace(')', '）');
+
+    private static double? ParseArea(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return null;
+        }
+
+        // e.g. "８８．１７m", "１階 ４６．７５m" → the number immediately before m.
+        var m = System.Text.RegularExpressions.Regex.Match(Ascii(value), @"([0-9]+(?:\.[0-9]+)?)\s*m");
+        return m.Success && double.TryParse(m.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var v)
+            ? v : null;
+    }
+
+    private static int? ParseInt(string? value)
+    {
+        var digits = new string((value ?? string.Empty).Select(Ascii).Where(char.IsAsciiDigit).ToArray());
+        return int.TryParse(digits, out var v) ? v : null;
+    }
+
+    private static long? ParseYenString(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return null;
+        }
+
+        var m = Yen().Match(Ascii(value));
+        var digits = m.Success ? m.Groups[1].Value.Replace(",", string.Empty) : string.Empty;
+        return long.TryParse(digits, out var v) ? v : null;
+    }
+
+    private static string Ascii(string s) => new(s.Select(Ascii).ToArray());
+
+    private static char Ascii(char c) => c switch
+    {
+        >= '０' and <= '９' => (char)('0' + (c - '０')),
+        '．' => '.',
+        '，' => ',',
+        _ => c,
+    };
 
     /// <summary>
     /// Recover the property type from the detail page's 種別 row
