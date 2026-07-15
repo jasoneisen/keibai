@@ -141,8 +141,9 @@ public static class ResultsHandler
     }
 
     /// <summary>
-    /// Nightly: enqueue <see cref="SyncRoundResults"/> for courts whose tracked properties opened (開札) in
-    /// the last two days — their results are now published.
+    /// Enqueue one <see cref="SyncRoundResults"/> per distinct round — (court, 開札 date) — whose 開札 fell
+    /// in the recent window, so each round's now-published 売却結果 is synced. Fired the evening of 開札
+    /// (primary) and again the next morning (catch-up); the sync is idempotent, so overlap is harmless.
     /// </summary>
     public static async Task Handle(
         ScheduleResultsSync _,
@@ -156,19 +157,29 @@ public static class ResultsHandler
         var from = today.AddDays(-2);
 
         await using var session = store.QuerySession();
-        var courts = (await session.Query<PropertyItem>()
-                .Where(p => p.OpeningDate >= from && p.OpeningDate <= today)
-                .ToListAsync(ct).ConfigureAwait(false))
-            .Select(p => p.CourtId)
-            .Distinct()
-            .ToList();
+        var candidates = await session.Query<PropertyItem>()
+            .Where(p => p.OpeningDate >= from && p.OpeningDate <= today)
+            .ToListAsync(ct).ConfigureAwait(false);
 
-        foreach (var courtId in courts)
+        var rounds = DueRounds(candidates, today);
+        foreach (var (courtId, openingDate) in rounds)
         {
-            await bus.PublishAsync(new SyncRoundResults(courtId, today)).ConfigureAwait(false);
+            await bus.PublishAsync(new SyncRoundResults(courtId, openingDate)).ConfigureAwait(false);
         }
 
-        log.LogInformation("ScheduleResultsSync: {Count} courts with a recent 開札 → results sync.", courts.Count);
+        log.LogInformation("ScheduleResultsSync: {Count} rounds with a recent 開札 → results sync.", rounds.Count);
+    }
+
+    /// <summary>Distinct (court, 開札 date) rounds whose 開札 falls in the recent window — one results sync each.</summary>
+    internal static IReadOnlyList<(string CourtId, DateOnly OpeningDate)> DueRounds(
+        IEnumerable<PropertyItem> items, DateOnly today)
+    {
+        var from = today.AddDays(-2);
+        return items
+            .Where(p => p.CourtId is not null && p.OpeningDate is { } d && d >= from && d <= today)
+            .Select(p => (p.CourtId, OpeningDate: p.OpeningDate!.Value))
+            .Distinct()
+            .ToList();
     }
 
     /// <summary>Upsert a page of result rows idempotently; returns how many were written. Internal for tests.</summary>
