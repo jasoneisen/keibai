@@ -1,3 +1,4 @@
+using Keibai.Core.Alerting;
 using Keibai.Core.Bit;
 using Keibai.Core.Domain;
 using Keibai.Core.Storage;
@@ -5,6 +6,7 @@ using JasperFx;
 using Marten;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Keibai.Core.Composition;
@@ -95,6 +97,47 @@ public static class KeibaiServiceCollectionExtensions
             .AddPolicyHandler((sp, _) => BitRetryPolicy.Create(sp))
             .AddHttpMessageHandler<BitRateLimitingHandler>();
 
+        AddAlerting(services);
+
         return services;
+    }
+
+    /// <summary>
+    /// Register the alerting composite. ntfy uses its OWN named <see cref="HttpClient"/> (never the
+    /// rate-limited BIT client). The registered <see cref="IAlerter"/> fans out to the providers listed
+    /// in <c>Keibai:Alerts:Providers</c>; <see cref="LoggingAlerter"/> is always included so a healthy
+    /// system still leaves a durable local trail, and it is the fallback when no provider is configured.
+    /// </summary>
+    private static void AddAlerting(IServiceCollection services)
+    {
+        services.AddHttpClient(NtfyAlerter.HttpClientName, http => http.Timeout = TimeSpan.FromSeconds(15));
+        services.AddSingleton<NtfyAlerter>();
+        services.AddSingleton<SmtpAlerter>();
+        services.AddSingleton<LoggingAlerter>();
+
+        services.AddSingleton<IAlerter>(sp =>
+        {
+            var providers = sp.GetRequiredService<IOptions<AlertOptions>>().Value.Providers;
+            var sinks = new List<IAlerter>();
+            foreach (var provider in providers)
+            {
+                switch (provider.Trim().ToLowerInvariant())
+                {
+                    case "ntfy":
+                        sinks.Add(sp.GetRequiredService<NtfyAlerter>());
+                        break;
+                    case "smtp":
+                        sinks.Add(sp.GetRequiredService<SmtpAlerter>());
+                        break;
+                    case "log":
+                        // Added unconditionally below; ignore explicit duplicates.
+                        break;
+                }
+            }
+
+            // Always keep a log trail, and never let a misconfiguration silently drop alerts.
+            sinks.Add(sp.GetRequiredService<LoggingAlerter>());
+            return new CompositeAlerter(sinks, sp.GetRequiredService<ILogger<CompositeAlerter>>());
+        });
     }
 }
