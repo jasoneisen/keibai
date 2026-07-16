@@ -73,7 +73,7 @@ public sealed class ResultsPageTests
         Assert.Contains("¥15,600,000", html);
         Assert.Contains("売却", html);
         // Per-prefecture stats band.
-        Assert.Contains("Sale-rate", html);
+        Assert.Contains("Sale rate", html);
         Assert.Contains("東京都", html);
 
         Assert.NotNull(reader.LastQuery);

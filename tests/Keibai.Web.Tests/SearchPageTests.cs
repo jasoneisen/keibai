@@ -127,6 +127,6 @@ public sealed class SearchPageTests
         Assert.Single(Regex.Matches(cut.Markup, @"Archived 3点セット \(PDF\) available"));
         // The "has documents" filter parsed into the query, and the checkbox is present.
         Assert.True(reader.LastQuery!.HasDocuments);
-        Assert.Contains("Only properties with archived documents", cut.Markup);
+        Assert.Contains("Only with archived documents", cut.Markup);
     }
 }

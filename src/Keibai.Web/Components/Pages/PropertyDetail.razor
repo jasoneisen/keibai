@@ -26,13 +26,13 @@
             @if (_watched)
             {
                 <button type="submit" class="btn btn-outline-warning">
-                    <i class="bi bi-star-fill text-warning me-1"></i>Watching
+                    <i class="bi bi-star-fill text-warning me-1"></i>ウォッチ中 / Watching
                 </button>
             }
             else
             {
                 <button type="submit" class="btn btn-outline-secondary">
-                    <i class="bi bi-star me-1"></i>Watch
+                    <i class="bi bi-star me-1"></i>ウォッチ / Watch
                 </button>
             }
         </form>
@@ -41,43 +41,43 @@
     <div class="row g-4">
         <div class="col-lg-6">
             <div class="card mb-4">
-                <div class="card-header fw-semibold">Overview</div>
+                <div class="card-header fw-semibold">概要 / Overview</div>
                 <div class="card-body">
                     <dl class="row mb-0">
-                        <dt class="col-sm-4">Prefecture 都道府県</dt>
+                        <dt class="col-sm-4">都道府県 / Prefecture</dt>
                         <dd class="col-sm-8">@view.PrefectureName</dd>
-                        <dt class="col-sm-4">Court 裁判所</dt>
+                        <dt class="col-sm-4">裁判所 / Court</dt>
                         <dd class="col-sm-8">@(view.Court?.Name ?? "—")</dd>
-                        <dt class="col-sm-4">Listing address</dt>
+                        <dt class="col-sm-4">所在地（公告）/ Listing address</dt>
                         <dd class="col-sm-8">@(string.IsNullOrWhiteSpace(item.RawAddress) ? "—" : item.RawAddress)</dd>
-                        <dt class="col-sm-4">Detail address 地番</dt>
+                        <dt class="col-sm-4">所在地（地番）/ Detail address</dt>
                         <dd class="col-sm-8">@(string.IsNullOrWhiteSpace(item.DetailAddress) ? "—" : item.DetailAddress)</dd>
-                        <dt class="col-sm-4">売却基準価額</dt>
+                        <dt class="col-sm-4">売却基準価額 / Standard price</dt>
                         <dd class="col-sm-8 jp-num">@Display.Yen(item.SaleStandardAmount)</dd>
-                        <dt class="col-sm-4">買受可能価額</dt>
+                        <dt class="col-sm-4">買受可能価額 / Minimum bid</dt>
                         <dd class="col-sm-8 jp-num">@Display.Yen(item.MinimumBidAmount)</dd>
                     </dl>
                 </div>
             </div>
 
             <div class="card mb-4">
-                <div class="card-header fw-semibold">Schedule 日程</div>
+                <div class="card-header fw-semibold">日程 / Schedule</div>
                 <div class="card-body">
                     <dl class="row mb-0">
-                        <dt class="col-sm-5">閲覧開始 Viewing</dt>
+                        <dt class="col-sm-5">閲覧開始 / Viewing</dt>
                         <dd class="col-sm-7 jp-num">@Display.Date(item.ViewingStart)</dd>
-                        <dt class="col-sm-5">入札期間 Bidding</dt>
+                        <dt class="col-sm-5">入札期間 / Bidding</dt>
                         <dd class="col-sm-7 jp-num">@Display.Date(item.BiddingStart) – @Display.Date(item.BiddingEnd)</dd>
-                        <dt class="col-sm-5">開札期日 Opening</dt>
+                        <dt class="col-sm-5">開札期日 / Opening</dt>
                         <dd class="col-sm-7 jp-num">@Display.Date(item.OpeningDate)</dd>
-                        <dt class="col-sm-5">売却決定期日 Decision</dt>
+                        <dt class="col-sm-5">売却決定期日 / Decision</dt>
                         <dd class="col-sm-7 jp-num">@Display.Date(item.SaleDecisionDate)</dd>
                     </dl>
                 </div>
             </div>
 
             <div class="card mb-4">
-                <div class="card-header fw-semibold">Attributes 属性</div>
+                <div class="card-header fw-semibold">属性 / Attributes</div>
                 <div class="card-body p-0">
                     <table class="table table-sm mb-0">
                         <tbody>
@@ -96,7 +96,7 @@
 
         <div class="col-lg-6">
             <div class="card mb-4">
-                <div class="card-header fw-semibold">Documents 3点セット</div>
+                <div class="card-header fw-semibold">3点セット / Documents</div>
                 <div class="card-body">
                     @if (view.Documents.Count > 0)
                     {
@@ -124,7 +124,7 @@
                     }
                     else
                     {
-                        <p class="text-muted mb-0">No archived documents.</p>
+                        <p class="text-muted mb-0">3点セットなし / No archived documents.</p>
                     }
                 </div>
             </div>
@@ -132,18 +132,18 @@
             @if (view.Result is { } result)
             {
                 <div class="card mb-4">
-                    <div class="card-header fw-semibold">Sale result 売却結果</div>
+                    <div class="card-header fw-semibold">売却結果 / Sale result</div>
                     <div class="card-body">
                         <dl class="row mb-0">
-                            <dt class="col-sm-5">Outcome</dt>
+                            <dt class="col-sm-5">結果 / Outcome</dt>
                             <dd class="col-sm-7">@(string.IsNullOrWhiteSpace(result.Outcome) ? "—" : result.Outcome)</dd>
-                            <dt class="col-sm-5">売却価額 Winning bid</dt>
+                            <dt class="col-sm-5">売却価額 / Winning bid</dt>
                             <dd class="col-sm-7 jp-num">@Display.Yen(result.WinningBid)</dd>
-                            <dt class="col-sm-5">入札件数 Bids</dt>
+                            <dt class="col-sm-5">入札件数 / Bids</dt>
                             <dd class="col-sm-7 jp-num">@(result.BidCount?.ToString() ?? "—")</dd>
                             @if (result.WinningBid is { } bid && result.SaleStandardAmount is { } standard && standard > 0)
                             {
-                                <dt class="col-sm-5">Bid : standard</dt>
+                                <dt class="col-sm-5">落札率 / Bid : standard</dt>
                                 <dd class="col-sm-7 jp-num">@Display.Ratio((double)bid / standard)</dd>
                             }
                         </dl>
@@ -152,12 +152,12 @@
             }
 
             <div class="card mb-4">
-                <div class="card-header fw-semibold">External 外部リンク</div>
+                <div class="card-header fw-semibold">外部リンク / External</div>
                 <div class="card-body">
                     <p class="mb-1">
                         <a href="@Display.GoogleMapsUrl(item.DetailAddress ?? item.RawAddress)"
                            target="_blank" rel="noopener">
-                            <i class="bi bi-geo-alt me-1"></i>Open in Google Maps
+                            <i class="bi bi-geo-alt me-1"></i>地図で開く / Open in Google Maps
                         </a>
                     </p>
                     <p class="text-muted small mb-3">
@@ -165,7 +165,7 @@
                     </p>
                     <p class="mb-0">
                         <a href="https://www.bit.courts.go.jp/" target="_blank" rel="noopener">
-                            <i class="bi bi-box-arrow-up-right me-1"></i>Search on BIT
+                            <i class="bi bi-box-arrow-up-right me-1"></i>BITで検索 / Search on BIT
                         </a>
                         <span class="text-muted small ms-1">(BIT has no stable deep link)</span>
                     </p>
@@ -176,14 +176,14 @@
 
     @if (item.Items.Count > 0)
     {
-        <h2 class="h5 mt-2 mb-3">物件 detail (@item.ItemCount item@(item.ItemCount == 1 ? "" : "s"))</h2>
+        <h2 class="h5 mt-2 mb-3">物件明細 / Item details (@item.ItemCount)</h2>
         <div class="row g-4">
             @foreach (var d in item.Items)
             {
                 <div class="col-lg-6">
                     <div class="card h-100">
                         <div class="card-header fw-semibold">
-                            物件 @(string.IsNullOrWhiteSpace(d.ItemNo) ? "?" : d.ItemNo)
+                            物件 / Item @(string.IsNullOrWhiteSpace(d.ItemNo) ? "?" : d.ItemNo)
                             @if (!string.IsNullOrWhiteSpace(d.Kind))
                             {
                                 <span class="text-muted fw-normal">(@d.Kind)</span>
@@ -206,7 +206,7 @@
                             }
                             else
                             {
-                                <p class="text-muted mb-0 p-3">No attributes captured.</p>
+                                <p class="text-muted mb-0 p-3">属性なし / No attributes captured.</p>
                             }
                         </div>
                     </div>
@@ -217,7 +217,7 @@
 
     @if (view.CaseSiblings.Count > 0)
     {
-        <h2 class="h5 mt-4 mb-3">Other 物件 in this case</h2>
+        <h2 class="h5 mt-4 mb-3">同一事件の他の物件 / Other items in this case</h2>
         <ul class="list-group">
             @foreach (var s in view.CaseSiblings)
             {
@@ -231,12 +231,12 @@
 }
 else if (_loaded)
 {
-    <PageTitle>Not found — 競売 Keibai</PageTitle>
+    <PageTitle>見つかりません / Not found — 競売 Keibai</PageTitle>
     <div class="alert alert-warning" role="alert">
-        <h1 class="h4 alert-heading">Property not found</h1>
+        <h1 class="h4 alert-heading">物件が見つかりません / Property not found</h1>
         <p class="mb-0">
             No property matches this court and sale-unit id.
-            <a href="/jp" class="alert-link">Back to search</a>.
+            <a href="/jp" class="alert-link">検索へ戻る / Back to search</a>.
         </p>
     </div>
 }
@@ -282,22 +282,22 @@ else if (_loaded)
     // The non-null/non-empty typed rollups, in the brief's order, for the Attributes card.
     private static IEnumerable<(string Label, string Value)> AttributeRows(PropertyItem i)
     {
-        if (!string.IsNullOrWhiteSpace(i.Structure)) yield return ("構造 Structure", i.Structure);
-        if (!string.IsNullOrWhiteSpace(i.RoomLayout)) yield return ("間取り Layout", i.RoomLayout);
-        if (i.LandAreaSqm is { } land) yield return ("土地面積 Land m²", land.ToString(CultureInfo.InvariantCulture));
-        if (i.BuildingAreaSqm is { } bld) yield return ("床面積 Building m²", bld.ToString(CultureInfo.InvariantCulture));
-        if (i.ExclusiveAreaSqm is { } exc) yield return ("専有面積 Exclusive m²", exc.ToString(CultureInfo.InvariantCulture));
-        if (!string.IsNullOrWhiteSpace(i.BuildYearMonth)) yield return ("築年月 Built", i.BuildYearMonth);
-        if (!string.IsNullOrWhiteSpace(i.Floor)) yield return ("階 Floor", i.Floor);
-        if (i.TotalUnits is { } units) yield return ("総戸数 Total units", units.ToString(CultureInfo.InvariantCulture));
-        if (i.AdminFeeYen is { } fee) yield return ("管理費等 Admin fee", Display.Yen(fee));
-        if (!string.IsNullOrWhiteSpace(i.LandCategory)) yield return ("地目 Land category", i.LandCategory);
-        if (!string.IsNullOrWhiteSpace(i.ZoningUse)) yield return ("用途地域 Zoning", i.ZoningUse);
-        if (!string.IsNullOrWhiteSpace(i.BuildingCoverageRatio)) yield return ("建ぺい率 Coverage", i.BuildingCoverageRatio);
-        if (!string.IsNullOrWhiteSpace(i.FloorAreaRatio)) yield return ("容積率 Floor-area ratio", i.FloorAreaRatio);
-        if (!string.IsNullOrWhiteSpace(i.LandRights)) yield return ("敷地利用権 Land rights", i.LandRights);
-        if (!string.IsNullOrWhiteSpace(i.Occupant)) yield return ("占有者 Occupant", i.Occupant);
-        if (!string.IsNullOrWhiteSpace(i.HouseNumber)) yield return ("家屋番号 House no.", i.HouseNumber);
+        if (!string.IsNullOrWhiteSpace(i.Structure)) yield return ("構造 / Structure", i.Structure);
+        if (!string.IsNullOrWhiteSpace(i.RoomLayout)) yield return ("間取り / Layout", i.RoomLayout);
+        if (i.LandAreaSqm is { } land) yield return ("土地面積 / Land m²", land.ToString(CultureInfo.InvariantCulture));
+        if (i.BuildingAreaSqm is { } bld) yield return ("床面積 / Building m²", bld.ToString(CultureInfo.InvariantCulture));
+        if (i.ExclusiveAreaSqm is { } exc) yield return ("専有面積 / Exclusive m²", exc.ToString(CultureInfo.InvariantCulture));
+        if (!string.IsNullOrWhiteSpace(i.BuildYearMonth)) yield return ("築年月 / Built", i.BuildYearMonth);
+        if (!string.IsNullOrWhiteSpace(i.Floor)) yield return ("階 / Floor", i.Floor);
+        if (i.TotalUnits is { } units) yield return ("総戸数 / Total units", units.ToString(CultureInfo.InvariantCulture));
+        if (i.AdminFeeYen is { } fee) yield return ("管理費等 / Admin fee", Display.Yen(fee));
+        if (!string.IsNullOrWhiteSpace(i.LandCategory)) yield return ("地目 / Land category", i.LandCategory);
+        if (!string.IsNullOrWhiteSpace(i.ZoningUse)) yield return ("用途地域 / Zoning", i.ZoningUse);
+        if (!string.IsNullOrWhiteSpace(i.BuildingCoverageRatio)) yield return ("建ぺい率 / Coverage", i.BuildingCoverageRatio);
+        if (!string.IsNullOrWhiteSpace(i.FloorAreaRatio)) yield return ("容積率 / Floor-area ratio", i.FloorAreaRatio);
+        if (!string.IsNullOrWhiteSpace(i.LandRights)) yield return ("敷地利用権 / Land rights", i.LandRights);
+        if (!string.IsNullOrWhiteSpace(i.Occupant)) yield return ("占有者 / Occupant", i.Occupant);
+        if (!string.IsNullOrWhiteSpace(i.HouseNumber)) yield return ("家屋番号 / House no.", i.HouseNumber);
     }
 
     // Human-readable byte size (KB/MB), matching the personal-research tone of the page.

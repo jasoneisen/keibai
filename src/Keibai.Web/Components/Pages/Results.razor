@@ -5,9 +5,9 @@
 @* 売却結果 explorer — past-auction outcomes with per-prefecture sale-rate/bid-ratio stats. Static SSR:
    the filter is a plain GET form; filters are read straight off HttpContext.Request.Query. *@
 
-<PageTitle>売却結果 — Keibai</PageTitle>
+<PageTitle>売却結果 / Results — 競売 Keibai</PageTitle>
 
-<h1 class="h3 mb-3"><i class="bi bi-graph-up me-2"></i>売却結果 — past sale results</h1>
+<h1 class="h3 mb-3"><i class="bi bi-graph-up me-2"></i>売却結果 / Past Sale Results</h1>
 
 @if (_facets is not null)
 {
@@ -15,9 +15,9 @@
         <div class="card-body">
             <form method="get" action="/jp/results" class="row g-2 align-items-end">
                 <div class="col-12 col-md-4">
-                    <label for="pref" class="form-label mb-1">Prefecture 都道府県</label>
+                    <label for="pref" class="form-label mb-1">都道府県 / Prefecture</label>
                     <select id="pref" name="pref" class="form-select">
-                        <option value="">All prefectures</option>
+                        <option value="">すべて / All prefectures</option>
                         @foreach (var p in _facets.Prefectures)
                         {
                             <option value="@p.Id" selected="@(p.Id == _pref)">@p.Name</option>
@@ -25,9 +25,9 @@
                     </select>
                 </div>
                 <div class="col-12 col-md-4">
-                    <label for="court" class="form-label mb-1">Court 裁判所</label>
+                    <label for="court" class="form-label mb-1">裁判所 / Court</label>
                     <select id="court" name="court" class="form-select">
-                        <option value="">All courts</option>
+                        <option value="">すべて / All courts</option>
                         @foreach (var c in _facets.Courts)
                         {
                             <option value="@c.Id" selected="@(c.Id == _court)">@c.Name</option>
@@ -35,9 +35,9 @@
                     </select>
                 </div>
                 <div class="col-12 col-md-2">
-                    <label for="outcome" class="form-label mb-1">Outcome 結果</label>
+                    <label for="outcome" class="form-label mb-1">結果 / Outcome</label>
                     <select id="outcome" name="outcome" class="form-select">
-                        <option value="">All outcomes</option>
+                        <option value="">すべて / All outcomes</option>
                         @foreach (var o in _facets.Outcomes)
                         {
                             <option value="@o" selected="@(o == _outcome)">@o</option>
@@ -46,9 +46,9 @@
                 </div>
                 <div class="col-12 col-md-2 d-flex gap-2">
                     <button type="submit" class="btn btn-primary flex-grow-1">
-                        <i class="bi bi-funnel me-1"></i>Filter
+                        <i class="bi bi-funnel me-1"></i>絞り込み / Filter
                     </button>
-                    <a href="/jp/results" class="btn btn-outline-secondary">Clear</a>
+                    <a href="/jp/results" class="btn btn-outline-secondary">クリア / Clear</a>
                 </div>
             </form>
         </div>
@@ -57,16 +57,16 @@
 
 @if (_stats is { Count: > 0 })
 {
-    <h2 class="h5 mb-2">Sale-rate &amp; winning-bid ratio by prefecture</h2>
+    <h2 class="h5 mb-2">都道府県別サマリー / Sale rate &amp; bid ratio by prefecture</h2>
     <div class="table-responsive mb-4">
         <table class="table table-sm table-striped align-middle">
             <thead>
                 <tr>
-                    <th scope="col">Prefecture</th>
-                    <th scope="col" class="text-end">Total</th>
-                    <th scope="col" class="text-end">Sold</th>
-                    <th scope="col" class="text-end">Sale rate</th>
-                    <th scope="col" class="text-end">Median bid ratio</th>
+                    <th scope="col">都道府県 / Prefecture</th>
+                    <th scope="col" class="text-end">件数 / Total</th>
+                    <th scope="col" class="text-end">売却 / Sold</th>
+                    <th scope="col" class="text-end">売却率 / Sale rate</th>
+                    <th scope="col" class="text-end">落札率中央値 / Median bid ratio</th>
                 </tr>
             </thead>
             <tbody>
@@ -88,14 +88,14 @@
 @if (_page is not null)
 {
     <div class="d-flex justify-content-between align-items-center mb-2">
-        <h2 class="h5 mb-0">Results</h2>
-        <span class="text-muted small jp-num">@_page.Total result(s)</span>
+        <h2 class="h5 mb-0">結果 / Results</h2>
+        <span class="text-muted small jp-num">@_page.Total 件 / results</span>
     </div>
 
     @if (_page.Items.Count == 0)
     {
         <div class="alert alert-info" role="alert">
-            <i class="bi bi-info-circle me-1"></i>No sale results match the current filter.
+            <i class="bi bi-info-circle me-1"></i>該当する売却結果がありません / No sale results match the current filter.
         </div>
     }
     else
@@ -104,15 +104,15 @@
             <table class="table table-striped table-hover align-middle">
                 <thead>
                     <tr>
-                        <th scope="col">Case 事件番号</th>
-                        <th scope="col">Court 裁判所</th>
-                        <th scope="col">Prefecture</th>
-                        <th scope="col">開札</th>
-                        <th scope="col" class="text-end">売却基準価額</th>
-                        <th scope="col" class="text-end">売却価額</th>
-                        <th scope="col" class="text-end">Ratio</th>
-                        <th scope="col" class="text-end">Bids 入札</th>
-                        <th scope="col">Outcome 結果</th>
+                        <th scope="col">事件番号 / Case</th>
+                        <th scope="col">裁判所 / Court</th>
+                        <th scope="col">都道府県 / Prefecture</th>
+                        <th scope="col">開札 / Opening</th>
+                        <th scope="col" class="text-end">売却基準価額 / Standard price</th>
+                        <th scope="col" class="text-end">売却価額 / Sale price</th>
+                        <th scope="col" class="text-end">落札率 / Ratio</th>
+                        <th scope="col" class="text-end">入札件数 / Bids</th>
+                        <th scope="col">結果 / Outcome</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -160,7 +160,7 @@
                     <li class="page-item @(_page.HasPrevious ? "" : "disabled")">
                         <a class="page-link" href="@PageHref(_page.Page - 1)" tabindex="@(_page.HasPrevious ? null : "-1")"
                            aria-disabled="@(_page.HasPrevious ? "false" : "true")">
-                            <i class="bi bi-chevron-left"></i> Prev
+                            <i class="bi bi-chevron-left"></i> 前へ / Prev
                         </a>
                     </li>
                     <li class="page-item disabled">
@@ -169,7 +169,7 @@
                     <li class="page-item @(_page.HasNext ? "" : "disabled")">
                         <a class="page-link" href="@PageHref(_page.Page + 1)" tabindex="@(_page.HasNext ? null : "-1")"
                            aria-disabled="@(_page.HasNext ? "false" : "true")">
-                            Next <i class="bi bi-chevron-right"></i>
+                            次へ / Next <i class="bi bi-chevron-right"></i>
                         </a>
                     </li>
                 </ul>

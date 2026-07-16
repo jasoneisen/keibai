@@ -4,9 +4,9 @@
 @* Ops dashboard — "confirm in 30 seconds that the system is healthy". Static SSR: one read in
    OnInitializedAsync, no interactivity. Bootstrap 5.3.7 utilities + a dependency-free sparkline. *@
 
-<PageTitle>Ops — 競売 Keibai</PageTitle>
+<PageTitle>運用 / Ops — 競売 Keibai</PageTitle>
 
-<h1 class="h3 mb-4"><i class="bi bi-activity me-2"></i>Ops</h1>
+<h1 class="h3 mb-4"><i class="bi bi-activity me-2"></i>運用 / Ops</h1>
 
 @if (_snap is { } snap)
 {
@@ -14,11 +14,11 @@
         <div class="col">
             <div class="card h-100">
                 <div class="card-body">
-                    <h2 class="h6 text-muted"><i class="bi bi-hdd me-1"></i>Storage</h2>
+                    <h2 class="h6 text-muted"><i class="bi bi-hdd me-1"></i>ストレージ / Storage</h2>
                     @if (snap.MaxGigabytes <= 0)
                     {
                         <p class="fs-4 mb-1">@snap.StorageGb.ToString("N1") GB</p>
-                        <span class="badge text-bg-secondary">watchdog off</span>
+                        <span class="badge text-bg-secondary">監視オフ / watchdog off</span>
                     }
                     else
                     {
@@ -40,7 +40,7 @@
         <div class="col">
             <div class="card h-100">
                 <div class="card-body">
-                    <h2 class="h6 text-muted"><i class="bi bi-stack me-1"></i>Queue depth</h2>
+                    <h2 class="h6 text-muted"><i class="bi bi-stack me-1"></i>キュー / Queue depth</h2>
                     <p class="fs-4 mb-1">@(snap.QueueDepth?.ToString() ?? "—")</p>
                     <span class="text-muted small">pending durable envelopes</span>
                 </div>
@@ -49,7 +49,7 @@
         <div class="col">
             <div class="card h-100">
                 <div class="card-body">
-                    <h2 class="h6 text-muted"><i class="bi bi-bank me-1"></i>Courts</h2>
+                    <h2 class="h6 text-muted"><i class="bi bi-bank me-1"></i>裁判所 / Courts</h2>
                     <p class="fs-4 mb-1">@snap.CourtsTotal <span class="fs-6 text-muted">total</span></p>
                     <span class="@(snap.DisabledCourts.Count > 0 ? "text-danger" : "text-muted") small">
                         @snap.DisabledCourts.Count disabled
@@ -60,15 +60,15 @@
         <div class="col">
             <div class="card h-100">
                 <div class="card-body">
-                    <h2 class="h6 text-muted"><i class="bi bi-calendar-day me-1"></i>Today <span class="text-muted">@snap.Today.Date</span></h2>
+                    <h2 class="h6 text-muted"><i class="bi bi-calendar-day me-1"></i>本日 / Today <span class="text-muted">@snap.Today.Date</span></h2>
                     <dl class="row mb-0 small">
-                        <dt class="col-7 fw-normal text-muted">Archives</dt>
+                        <dt class="col-7 fw-normal text-muted">アーカイブ / Archives</dt>
                         <dd class="col-5 mb-0 text-end">@snap.Today.PdfsArchived / @snap.Today.ArchiveAttempts</dd>
-                        <dt class="col-7 fw-normal text-muted">Failures</dt>
+                        <dt class="col-7 fw-normal text-muted">失敗 / Failures</dt>
                         <dd class="col-5 mb-0 text-end @(snap.Today.ArchiveFailures > 0 ? "text-danger" : "")">@snap.Today.ArchiveFailures</dd>
-                        <dt class="col-7 fw-normal text-muted">Results</dt>
+                        <dt class="col-7 fw-normal text-muted">結果 / Results</dt>
                         <dd class="col-5 mb-0 text-end">@snap.Today.SaleResultsUpserted</dd>
-                        <dt class="col-7 fw-normal text-muted">Rechecks</dt>
+                        <dt class="col-7 fw-normal text-muted">再確認 / Rechecks</dt>
                         <dd class="col-5 mb-0 text-end">@snap.Today.RechecksPerformed</dd>
                     </dl>
                 </div>
@@ -79,7 +79,7 @@
     @if (snap.DisabledCourts.Count > 0)
     {
         <div class="alert alert-danger" role="alert">
-            <h2 class="h6 alert-heading"><i class="bi bi-exclamation-octagon me-1"></i>Disabled courts</h2>
+            <h2 class="h6 alert-heading"><i class="bi bi-exclamation-octagon me-1"></i>無効化された裁判所 / Disabled courts</h2>
             <ul class="mb-0">
                 @foreach (var court in snap.DisabledCourts)
                 {
@@ -99,19 +99,19 @@
         </div>
     }
 
-    <h2 class="h5 mb-2"><i class="bi bi-map me-2"></i>Prefecture health</h2>
+    <h2 class="h5 mb-2"><i class="bi bi-map me-2"></i>都道府県別ステータス / Prefecture health</h2>
     <div class="table-responsive mb-4">
         <table class="table table-sm table-hover align-middle">
             <thead>
                 <tr>
                     <th scope="col"></th>
-                    <th scope="col">Prefecture</th>
-                    <th scope="col">Last sweep</th>
-                    <th scope="col" class="text-end">Found</th>
-                    <th scope="col" class="text-end">New</th>
-                    <th scope="col" class="text-end">Errors</th>
+                    <th scope="col">都道府県 / Prefecture</th>
+                    <th scope="col">最終取得 / Last sweep</th>
+                    <th scope="col" class="text-end">取得 / Found</th>
+                    <th scope="col" class="text-end">新規 / New</th>
+                    <th scope="col" class="text-end">エラー / Errors</th>
                     <th scope="col"></th>
-                    <th scope="col">History</th>
+                    <th scope="col">履歴 / History</th>
                 </tr>
             </thead>
             <tbody>
@@ -148,10 +148,10 @@
         </table>
     </div>
 
-    <h2 class="h5 mb-2"><i class="bi bi-bell me-2"></i>Recent alerts</h2>
+    <h2 class="h5 mb-2"><i class="bi bi-bell me-2"></i>最近のアラート / Recent alerts</h2>
     @if (snap.RecentAlerts.Count == 0)
     {
-        <p class="text-muted">No recent alerts — all quiet.</p>
+        <p class="text-muted">アラートなし / No recent alerts — all quiet.</p>
     }
     else
     {

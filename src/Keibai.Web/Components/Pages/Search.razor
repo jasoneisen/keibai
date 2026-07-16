@@ -7,9 +7,9 @@
    POST-Redirect-Get forms. No @rendermode, no EditForm. Render fields are assigned only after the
    awaits in OnInitializedAsync and guarded by @if so the pre-render pass never NREs. *@
 
-<PageTitle>Search — 競売 Keibai</PageTitle>
+<PageTitle>物件検索 / Search — 競売 Keibai</PageTitle>
 
-<h1 class="h3 mb-3"><i class="bi bi-search me-2"></i>Search 物件</h1>
+<h1 class="h3 mb-3"><i class="bi bi-search me-2"></i>物件検索 / Property Search</h1>
 
 @if (_facets is { } facets && _page is { } results)
 {
@@ -21,9 +21,9 @@
         <div class="card-body">
             <form method="get" action="/jp" class="row g-3">
                 <div class="col-md-3">
-                    <label for="pref" class="form-label">Prefecture</label>
+                    <label for="pref" class="form-label">都道府県 / Prefecture</label>
                     <select id="pref" name="pref" class="form-select">
-                        <option value="">All prefectures</option>
+                        <option value="">すべて / All prefectures</option>
                         @foreach (var p in facets.Prefectures)
                         {
                             <option value="@p.Id" selected="@(query.PrefectureId == p.Id)">@Display.Prefecture(p.Id)</option>
@@ -31,9 +31,9 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label for="court" class="form-label">Court</label>
+                    <label for="court" class="form-label">裁判所 / Court</label>
                     <select id="court" name="court" class="form-select">
-                        <option value="">All courts</option>
+                        <option value="">すべて / All courts</option>
                         @foreach (var group in facets.Courts.GroupBy(c => c.PrefectureId))
                         {
                             <optgroup label="@Display.Prefecture(group.Key)">
@@ -46,9 +46,9 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label for="type" class="form-label">Type</label>
+                    <label for="type" class="form-label">種別 / Type</label>
                     <select id="type" name="type" class="form-select">
-                        <option value="">All types</option>
+                        <option value="">すべて / All types</option>
                         @foreach (var t in _types)
                         {
                             <option value="@t" selected="@(query.Type == t)">@Display.TypeLabel(t)</option>
@@ -56,45 +56,45 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label for="status" class="form-label">Status</label>
+                    <label for="status" class="form-label">状態 / Status</label>
                     <select id="status" name="status" class="form-select">
                         @foreach (var s in _statuses)
                         {
-                            <option value="@s" selected="@(query.Status == s)">@s</option>
+                            <option value="@s" selected="@(query.Status == s)">@Display.StatusFilterLabel(s)</option>
                         }
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label for="min" class="form-label">Min price (¥)</label>
+                    <label for="min" class="form-label">最低価格 / Min price (¥)</label>
                     <input id="min" type="number" name="min" min="0" step="1" class="form-control"
                            value="@query.MinPrice" placeholder="0" />
                 </div>
                 <div class="col-md-3">
-                    <label for="max" class="form-label">Max price (¥)</label>
+                    <label for="max" class="form-label">最高価格 / Max price (¥)</label>
                     <input id="max" type="number" name="max" min="0" step="1" class="form-control"
                            value="@query.MaxPrice" placeholder="∞" />
                 </div>
                 <div class="col-md-3">
-                    <label for="from" class="form-label">開札 from</label>
+                    <label for="from" class="form-label">開札 / Opening (from)</label>
                     <input id="from" type="date" name="from" class="form-control"
                            value="@(query.OpeningFrom?.ToString("yyyy-MM-dd"))" />
                 </div>
                 <div class="col-md-3">
-                    <label for="to" class="form-label">開札 to</label>
+                    <label for="to" class="form-label">開札 / Opening (to)</label>
                     <input id="to" type="date" name="to" class="form-control"
                            value="@(query.OpeningTo?.ToString("yyyy-MM-dd"))" />
                 </div>
                 <div class="col-md-8">
-                    <label for="q" class="form-label">Address</label>
+                    <label for="q" class="form-label">所在地 / Address</label>
                     <input id="q" name="q" class="form-control" value="@query.Text"
                            placeholder="Free-text address search" />
                 </div>
                 <div class="col-md-4">
-                    <label for="sort" class="form-label">Sort</label>
+                    <label for="sort" class="form-label">並び順 / Sort</label>
                     <select id="sort" name="sort" class="form-select">
                         @foreach (var so in _sorts)
                         {
-                            <option value="@so" selected="@(query.Sort == so)">@so</option>
+                            <option value="@so" selected="@(query.Sort == so)">@Display.SortLabel(so)</option>
                         }
                     </select>
                 </div>
@@ -103,26 +103,26 @@
                         <input class="form-check-input" type="checkbox" id="docs" name="docs" value="1"
                                checked="@query.HasDocuments" />
                         <label class="form-check-label" for="docs">
-                            <i class="bi bi-file-earmark-pdf me-1"></i>Only properties with archived documents
+                            <i class="bi bi-file-earmark-pdf me-1"></i>3点セットあり / Only with archived documents
                         </label>
                     </div>
                 </div>
                 <div class="col-12">
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-search me-1"></i>Search</button>
-                    <a href="/jp" class="btn btn-outline-secondary">Clear</a>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-search me-1"></i>検索 / Search</button>
+                    <a href="/jp" class="btn btn-outline-secondary">クリア / Clear</a>
                 </div>
             </form>
         </div>
     </div>
 
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
-        <span class="text-muted">@results.Total propert@(results.Total == 1 ? "y" : "ies")</span>
+        <span class="text-muted jp-num">@results.Total 件 / @(results.Total == 1 ? "property" : "properties")</span>
         <form method="post" action="/jp/search/save@(SearchQueryString.ToQueryString(query))" class="d-flex gap-2">
             <input name="name" required placeholder="Name this search" class="form-control form-control-sm"
                    style="max-width: 16rem;" />
             <input type="hidden" name="return" value="/jp/watchlist" />
             <button type="submit" class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-bookmark-plus me-1"></i>Save this search
+                <i class="bi bi-bookmark-plus me-1"></i>保存 / Save search
             </button>
         </form>
     </div>
@@ -130,7 +130,7 @@
     @if (results.Items.Count == 0)
     {
         <div class="alert alert-info" role="alert">
-            <i class="bi bi-info-circle me-1"></i>No properties match your filters.
+            <i class="bi bi-info-circle me-1"></i>該当する物件がありません / No properties match your filters.
         </div>
     }
     else
@@ -140,15 +140,15 @@
                 <thead>
                     <tr>
                         <th scope="col"></th>
-                        <th scope="col">Case no</th>
-                        <th scope="col">Type</th>
-                        <th scope="col">Prefecture</th>
-                        <th scope="col">Address</th>
-                        <th scope="col" class="text-end">売却基準価額</th>
-                        <th scope="col" class="text-end">買受可能価額</th>
-                        <th scope="col">Bid window</th>
-                        <th scope="col">Deadline</th>
-                        <th scope="col">Status</th>
+                        <th scope="col">事件番号 / Case no.</th>
+                        <th scope="col">種別 / Type</th>
+                        <th scope="col">都道府県 / Prefecture</th>
+                        <th scope="col">所在地 / Address</th>
+                        <th scope="col" class="text-end">売却基準価額 / Standard price</th>
+                        <th scope="col" class="text-end">買受可能価額 / Minimum bid</th>
+                        <th scope="col">入札期間 / Bid window</th>
+                        <th scope="col">締切 / Deadline</th>
+                        <th scope="col">状態 / Status</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -162,13 +162,13 @@
                                     <input type="hidden" name="return" value="@_returnUrl" />
                                     @if (watched.Contains(item.Id))
                                     {
-                                        <button type="submit" class="btn btn-link p-0 text-warning" title="Unwatch">
+                                        <button type="submit" class="btn btn-link p-0 text-warning" title="ウォッチ解除 / Unwatch">
                                             <i class="bi bi-star-fill"></i>
                                         </button>
                                     }
                                     else
                                     {
-                                        <button type="submit" class="btn btn-link p-0 text-secondary" title="Watch">
+                                        <button type="submit" class="btn btn-link p-0 text-secondary" title="ウォッチ / Watch">
                                             <i class="bi bi-star"></i>
                                         </button>
                                     }
@@ -210,16 +210,16 @@
                     <li class="page-item @(results.HasPrevious ? "" : "disabled")">
                         <a class="page-link" href="/jp@(SearchQueryString.ToQueryString(query, page: results.Page - 1))"
                            aria-label="Previous">
-                            <i class="bi bi-chevron-left"></i> Prev
+                            <i class="bi bi-chevron-left"></i> 前へ / Prev
                         </a>
                     </li>
                     <li class="page-item disabled">
-                        <span class="page-link">Page @results.Page of @results.TotalPages</span>
+                        <span class="page-link jp-num">Page @results.Page of @results.TotalPages</span>
                     </li>
                     <li class="page-item @(results.HasNext ? "" : "disabled")">
                         <a class="page-link" href="/jp@(SearchQueryString.ToQueryString(query, page: results.Page + 1))"
                            aria-label="Next">
-                            Next <i class="bi bi-chevron-right"></i>
+                            次へ / Next <i class="bi bi-chevron-right"></i>
                         </a>
                     </li>
                 </ul>

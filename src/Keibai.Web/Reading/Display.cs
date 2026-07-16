@@ -1,6 +1,7 @@
 using System.Globalization;
 using Keibai.Core.Bit;
 using Keibai.Core.Domain;
+using Keibai.Core.Search;
 
 namespace Keibai.Web.Reading;
 
@@ -24,22 +25,45 @@ public static class Display
     /// <summary>Bilingual property-type label.</summary>
     public static string TypeLabel(SaleCls? cls) => cls switch
     {
-        SaleCls.Land => "土地 Land",
-        SaleCls.Detached => "戸建 Detached",
-        SaleCls.Mansion => "マンション Condo",
-        SaleCls.Other => "その他 Other",
+        SaleCls.Land => "土地 / Land",
+        SaleCls.Detached => "戸建 / Detached",
+        SaleCls.Mansion => "マンション / Condo",
+        SaleCls.Other => "その他 / Other",
         _ => "—",
     };
 
     /// <summary>Bilingual bidding-status label for a <see cref="Core.Search.PropertySearch.DeriveStatus"/> value.</summary>
     public static string StatusLabel(string? status) => status switch
     {
-        "upcoming" => "Upcoming",
-        "viewing" => "Viewing 閲覧中",
-        "bidding" => "Bidding 入札中",
-        "closed" => "Closed 入札終了",
-        "opened" => "Opened 開札",
+        "upcoming" => "予定 / Upcoming",
+        "viewing" => "閲覧中 / Viewing",
+        "bidding" => "入札中 / Bidding",
+        "closed" => "入札終了 / Closed",
+        "opened" => "開札 / Opened",
         _ => "—",
+    };
+
+    /// <summary>Bilingual label for a bidding-status filter option.</summary>
+    public static string StatusFilterLabel(BiddingStatus status) => status switch
+    {
+        BiddingStatus.Any => "すべて / All",
+        BiddingStatus.Upcoming => "予定 / Upcoming",
+        BiddingStatus.Viewing => "閲覧中 / Viewing",
+        BiddingStatus.Bidding => "入札中 / Bidding",
+        BiddingStatus.Closed => "入札終了 / Closed",
+        BiddingStatus.Opened => "開札 / Opened",
+        _ => status.ToString(),
+    };
+
+    /// <summary>Bilingual label for a result-ordering option.</summary>
+    public static string SortLabel(PropertySort sort) => sort switch
+    {
+        PropertySort.DeadlineAsc => "締切が近い順 / Deadline",
+        PropertySort.OpeningAsc => "開札が近い順 / Opening date",
+        PropertySort.PriceAsc => "価格が安い順 / Price ↑",
+        PropertySort.PriceDesc => "価格が高い順 / Price ↓",
+        PropertySort.NewestFirst => "新着順 / Newest",
+        _ => sort.ToString(),
     };
 
     /// <summary>Bootstrap contextual badge class for a bidding status.</summary>
