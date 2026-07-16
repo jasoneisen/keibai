@@ -56,7 +56,9 @@ public static class KeibaiServiceCollectionExtensions
                     // Phase 3 search filters on property type + 売却基準価額 (price range) — index both so a
                     // typical search never full-scans the collection.
                     .Index(x => x.SaleCls!)
-                    .Index(x => x.SaleStandardAmount!);
+                    .Index(x => x.SaleStandardAmount!)
+                    // "Has archived documents" filter (LastArchivedAt set).
+                    .Index(x => x.LastArchivedAt!);
                 opts.Schema.For<ArchivedDocument>()
                     .Identity(x => x.Id)
                     .Index(x => x.PropertyItemId)

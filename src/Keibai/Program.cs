@@ -134,10 +134,21 @@ app.MapPost("/admin/run-digest", async (IMessageBus bus) =>
 // Stream an archived 3点セット PDF from the LOCAL blob store (never hotlink BIT). The property detail
 // page's document links point here: /jp/doc/{courtId}/{saleUnitId}/{sha256}.
 app.MapGet("/jp/doc/{courtId}/{saleUnitId}/{sha}", async (
-    string courtId, string saleUnitId, string sha, IPropertyReader properties, CancellationToken ct) =>
+    string courtId, string saleUnitId, string sha, IPropertyReader properties, HttpContext http, CancellationToken ct) =>
 {
     var pdf = await properties.GetPdfAsync($"{courtId}:{saleUnitId}", sha, ct);
-    return pdf is null ? Results.NotFound() : Results.File(pdf.Bytes, pdf.ContentType, pdf.FileName);
+    if (pdf is null)
+    {
+        return Results.NotFound();
+    }
+
+    // Render inline in the browser's PDF viewer (not a download). The disposition is set explicitly so
+    // Results.File does not attach it; SetHttpFileName encodes non-ASCII (Japanese) names per RFC 5987.
+    // enableRangeProcessing lets the viewer seek/stream pages.
+    var disposition = new Microsoft.Net.Http.Headers.ContentDispositionHeaderValue("inline");
+    disposition.SetHttpFileName(pdf.FileName);
+    http.Response.Headers.ContentDisposition = disposition.ToString();
+    return Results.File(pdf.Bytes, pdf.ContentType, enableRangeProcessing: true);
 });
 
 // --- Phase 3 write actions (plain-form POST + Post-Redirect-Get; static-SSR friendly) ---

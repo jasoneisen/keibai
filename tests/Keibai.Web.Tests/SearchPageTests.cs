@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Keibai.Core.Domain;
 using Keibai.Core.Search;
 using Keibai.Web.Components.Pages;
@@ -105,5 +106,27 @@ public sealed class SearchPageTests
         Assert.Contains("data-enhance-nav=\"false\"", cut.Markup);
         Assert.Contains("?page=", cut.Markup);
         Assert.Contains("Page 2 of 4", cut.Markup);
+    }
+
+    [Fact]
+    public void Pdf_badge_marks_archived_rows_and_docs_filter_is_parsed()
+    {
+        var archived = Item(unit: "00000000001");
+        archived.LastArchivedAt = DateTimeOffset.UtcNow;
+        var plain = Item(id: "31111:00000000002", unit: "00000000002", caseRaw: "令和07年(ケ)第477号");
+        var reader = new FakePropertyReader
+        {
+            SearchResult = new PagedResult<PropertyItem>([archived, plain], 2, 1, 25),
+        };
+        using var ctx = NewContext(reader);
+
+        var cut = ctx.Render<Search>(p =>
+            p.AddCascadingValue<HttpContext>(TestHttp.Get("?docs=1")));
+
+        // The PDF badge marks exactly the archived row (its title text is unique to the badge).
+        Assert.Single(Regex.Matches(cut.Markup, @"Archived 3点セット \(PDF\) available"));
+        // The "has documents" filter parsed into the query, and the checkbox is present.
+        Assert.True(reader.LastQuery!.HasDocuments);
+        Assert.Contains("Only properties with archived documents", cut.Markup);
     }
 }

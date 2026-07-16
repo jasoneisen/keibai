@@ -25,6 +25,7 @@ public static class SearchQueryString
         OpeningFrom = Date(q["from"]),
         OpeningTo = Date(q["to"]),
         Text = Str(q["q"]),
+        HasDocuments = Bool(q["docs"]),
         Sort = Enum.TryParse<PropertySort>(q["sort"], true, out var so) ? so : PropertySort.DeadlineAsc,
         Page = Page(q["page"]),
         PageSize = 25,
@@ -43,6 +44,7 @@ public static class SearchQueryString
         Add(parts, "from", query.OpeningFrom?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
         Add(parts, "to", query.OpeningTo?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
         Add(parts, "q", query.Text);
+        Add(parts, "docs", query.HasDocuments ? "1" : null);
         Add(parts, "sort", query.Sort == PropertySort.DeadlineAsc ? null : query.Sort.ToString());
         var effectivePage = page ?? query.Page;
         Add(parts, "page", effectivePage > 1 ? effectivePage.ToString(CultureInfo.InvariantCulture) : null);
@@ -58,6 +60,8 @@ public static class SearchQueryString
     }
 
     private static string? Str(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim();
+
+    private static bool Bool(string? v) => v is "1" or "true" or "on";
 
     private static long? Long(string? v) =>
         long.TryParse(v, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) ? n : null;

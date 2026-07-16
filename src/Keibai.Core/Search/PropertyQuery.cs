@@ -63,6 +63,8 @@ public sealed record PropertyQuery
     public DateOnly? OpeningTo { get; init; }
     /// <summary>Free-text substring over the (listing / detail) address.</summary>
     public string? Text { get; init; }
+    /// <summary>When true, only properties whose 3点セット has been archived (<c>LastArchivedAt</c> set).</summary>
+    public bool HasDocuments { get; init; }
     /// <summary>Result ordering.</summary>
     public PropertySort Sort { get; init; } = PropertySort.DeadlineAsc;
     /// <summary>1-based page number.</summary>
@@ -74,7 +76,7 @@ public sealed record PropertyQuery
     public bool IsEmpty =>
         string.IsNullOrWhiteSpace(PrefectureId) && string.IsNullOrWhiteSpace(CourtId) && Type is null
         && MinPrice is null && MaxPrice is null && Status == BiddingStatus.Any
-        && OpeningFrom is null && OpeningTo is null && string.IsNullOrWhiteSpace(Text);
+        && OpeningFrom is null && OpeningTo is null && string.IsNullOrWhiteSpace(Text) && !HasDocuments;
 }
 
 /// <summary>One page of results plus the total count, for server-side paging.</summary>

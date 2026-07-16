@@ -60,6 +60,12 @@ public static class PropertySearch
                 || (x.DetailAddress != null && x.DetailAddress.Contains(term)));
         }
 
+        if (f.HasDocuments)
+        {
+            // LastArchivedAt is set iff the 3点セット was archived (⇔ at least one ArchivedDocument exists).
+            q = q.Where(x => x.LastArchivedAt != null);
+        }
+
         return ApplyStatus(q, f.Status, today);
     }
 
