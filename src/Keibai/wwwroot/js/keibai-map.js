@@ -15,6 +15,10 @@
     // Module-level handle so a re-init after enhanced navigation can dispose the old map cleanly.
     var mapInstance = null;
 
+    // Google Maps API key from the container's data-streetview-key (set per page render). Non-empty
+    // turns on the Street View embed in the pin popups; empty leaves only the keyless SV link.
+    var streetViewKey = "";
+
     var JAPAN_CENTER = [36.5, 138.0];
     var JAPAN_ZOOM = 5;
 
@@ -43,6 +47,24 @@
         return (value === null || value === undefined || value === "") ? "—" : esc(value);
     }
 
+    // Street View for a coordinate: a small Maps Embed API iframe when a key is configured (loads
+    // lazily — only when the popup actually opens and inserts it into the DOM), and always a keyless
+    // deep link that opens the pano in a new tab / the Maps app. lat/lng are numbers (typeof-checked
+    // before grouping), so interpolating them is safe.
+    function streetViewHtml(lat, lng) {
+        var html = "";
+        if (streetViewKey) {
+            html +=
+                '<iframe class="keibai-sv" loading="lazy" referrerpolicy="no-referrer-when-downgrade"' +
+                ' allowfullscreen src="https://www.google.com/maps/embed/v1/streetview?key=' +
+                encodeURIComponent(streetViewKey) + "&location=" + lat + "," + lng + '"></iframe>';
+        }
+        html +=
+            '<div class="mb-2"><a href="https://www.google.com/maps/@?api=1&amp;map_action=pano&amp;viewpoint=' +
+            lat + "%2C" + lng + '" target="_blank" rel="noopener" class="small">ストリートビュー / Street View ↗</a></div>';
+        return html;
+    }
+
     function popupHtml(pin) {
         var detailUrl = "/jp/property/" + encodeURIComponent(pin.courtId) + "/" + encodeURIComponent(pin.saleUnitId);
         return (
@@ -55,6 +77,7 @@
             '<div class="mb-1 jp-num">売却基準価額 ' + esc(yen(pin.price)) +
             " / 買受可能価額 " + esc(yen(pin.minBid)) + "</div>" +
             '<div class="mb-2 jp-num">入札締切 ' + orDash(pin.biddingEnd) + "</div>" +
+            streetViewHtml(pin.lat, pin.lng) +
             '<a href="' + detailUrl + '" target="_blank" rel="noopener" class="fw-semibold">詳細を見る →</a>' +
             "</div>"
         );
@@ -122,6 +145,8 @@
                 '<a href="https://maps.gsi.go.jp/development/ichiran.html">国土地理院</a>'
         }).addTo(map);
 
+        streetViewKey = el.getAttribute("data-streetview-key") || "";
+
         var pinsUrl = el.getAttribute("data-pins-url");
         if (!pinsUrl) {
             setCount("地図データを読み込めませんでした / Could not load map data.");
@@ -158,9 +183,11 @@
                 '<div class="small text-muted">' + orDash(pin.address) + "</div>" +
                 "</div>";
         }
+        // One Street View section for the whole stack — every property here shares the coordinate.
         return (
             '<div class="keibai-map-popup">' +
             '<div class="fw-semibold mb-1">この地点に ' + group.length + " 件 / " + group.length + " properties</div>" +
+            streetViewHtml(group[0].lat, group[0].lng) +
             rows +
             "</div>"
         );

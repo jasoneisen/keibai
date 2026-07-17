@@ -14,6 +14,7 @@ public static class KeibaiWebServiceCollectionExtensions
     /// <summary>Register the property / results / ops readers and the watchlist store.</summary>
     public static IServiceCollection AddKeibaiWeb(this IServiceCollection services)
     {
+        services.AddOptions<MapOptions>().BindConfiguration(MapOptions.SectionName);
         services.AddScoped<IPropertyReader, PropertyReader>();
         services.AddScoped<IResultsReader, ResultsReader>();
         services.AddScoped<IOpsReader, OpsReader>();

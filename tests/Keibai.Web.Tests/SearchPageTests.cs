@@ -41,12 +41,15 @@ public sealed class SearchPageTests
             OpeningDate = new DateOnly(2026, 8, 15),
         };
 
-    private static Bunit.BunitContext NewContext(FakePropertyReader reader, IWatchlist? watchlist = null)
+    private static Bunit.BunitContext NewContext(
+        FakePropertyReader reader, IWatchlist? watchlist = null, string? streetViewKey = null)
     {
         var ctx = new Bunit.BunitContext();
         ctx.Services.AddSingleton<IPropertyReader>(reader);
         ctx.Services.AddSingleton(watchlist ?? new FakeWatchlist());
         ctx.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+        ctx.Services.AddSingleton(Microsoft.Extensions.Options.Options.Create(
+            new MapOptions { GoogleMapsApiKey = streetViewKey ?? "" }));
         return ctx;
     }
 
@@ -173,5 +176,34 @@ public sealed class SearchPageTests
         Assert.Equal([BiddingStatus.Bidding, BiddingStatus.Closed], reader.LastQuery!.Statuses);
         Assert.Matches(@"id=""status-Closed""[^>]*\schecked", cut.Markup);
         Assert.DoesNotMatch(@"id=""status-Viewing""[^>]*\schecked", cut.Markup);
+    }
+
+    [Fact]
+    public void Map_container_carries_streetview_key_when_configured()
+    {
+        var reader = new FakePropertyReader
+        {
+            SearchResult = new PagedResult<PropertyItem>([Item()], 1, 1, 25),
+        };
+        using var ctx = NewContext(reader, streetViewKey: "test-key-123");
+
+        var cut = ctx.Render<Search>(p => p.AddCascadingValue<HttpContext>(TestHttp.Get()));
+
+        Assert.Contains("data-streetview-key=\"test-key-123\"", cut.Markup);
+    }
+
+    [Fact]
+    public void Map_container_omits_streetview_key_when_not_configured()
+    {
+        var reader = new FakePropertyReader
+        {
+            SearchResult = new PagedResult<PropertyItem>([Item()], 1, 1, 25),
+        };
+        using var ctx = NewContext(reader);
+
+        var cut = ctx.Render<Search>(p => p.AddCascadingValue<HttpContext>(TestHttp.Get()));
+
+        // Blazor must omit the attribute entirely (null value) rather than render it empty.
+        Assert.DoesNotContain("data-streetview-key", cut.Markup);
     }
 }

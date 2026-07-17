@@ -43,6 +43,19 @@ body {
     font-size: 0.875rem;
 }
 
+/* Street View embed inside a pin popup (rendered only when a Google Maps key is configured). Fixed
+   width keeps Leaflet's shrink-wrapped popup from collapsing the iframe; stays inside the default
+   300px popup maxWidth. */
+.keibai-map-popup .keibai-sv {
+    display: block;
+    width: 240px;
+    max-width: 100%;
+    height: 140px;
+    border: 0;
+    border-radius: 0.25rem;
+    margin-bottom: 0.25rem;
+}
+
 /* Numbered marker for pins that share the EXACT same coordinate (multi-parcel cases geocoded to one
    point) — a filled circle showing the stack size; its popup lists every property at that point. */
 .keibai-pin-stack span {
