@@ -46,7 +46,6 @@ public static class Display
     /// <summary>Bilingual label for a bidding-status filter option.</summary>
     public static string StatusFilterLabel(BiddingStatus status) => status switch
     {
-        BiddingStatus.Any => "すべて / All",
         BiddingStatus.Upcoming => "予定 / Upcoming",
         BiddingStatus.Viewing => "閲覧中 / Viewing",
         BiddingStatus.Bidding => "入札中 / Bidding",

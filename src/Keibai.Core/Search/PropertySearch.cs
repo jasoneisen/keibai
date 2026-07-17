@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Keibai.Core.Domain;
 using Keibai.Core.Ingestion;
 
@@ -66,20 +67,58 @@ public static class PropertySearch
             q = q.Where(x => x.LastArchivedAt != null);
         }
 
-        return ApplyStatus(q, f.Status, today);
+        return ApplyStatus(q, f.Statuses, today);
     }
 
+    /// <summary>All five lifecycle statuses — a selection of every one is equivalent to no constraint.</summary>
+    private static readonly BiddingStatus[] AllStatuses =
+    [
+        BiddingStatus.Upcoming, BiddingStatus.Viewing, BiddingStatus.Bidding,
+        BiddingStatus.Closed, BiddingStatus.Opened,
+    ];
+
     private static IQueryable<PropertyItem> ApplyStatus(
-        IQueryable<PropertyItem> q, BiddingStatus status, DateOnly today) =>
+        IQueryable<PropertyItem> q, IReadOnlyList<BiddingStatus> statuses, DateOnly today)
+    {
+        // Distinct, valid selection. Empty (no filter) or all-five (every lifecycle state) ⇒ no constraint.
+        var set = statuses.Where(s => Array.IndexOf(AllStatuses, s) >= 0).Distinct().ToArray();
+        if (set.Length is 0 || set.Length == AllStatuses.Length)
+        {
+            return q;
+        }
+
+        // OR the selected per-status date predicates into ONE Where — a boolean disjunction Marten
+        // translates to a single SQL clause, so it stays index-friendly and matches DeriveStatus exactly.
+        // Each sub-predicate's parameter is rebound onto a shared parameter so the tree has no Invoke node
+        // (which Marten's LINQ provider would not translate).
+        var x = Expression.Parameter(typeof(PropertyItem), "x");
+        Expression? body = null;
+        foreach (var status in set)
+        {
+            var predicate = StatusPredicate(status, today);
+            var rebound = new ParameterRebinder(predicate.Parameters[0], x).Visit(predicate.Body);
+            body = body is null ? rebound : Expression.OrElse(body, rebound);
+        }
+
+        var lambda = Expression.Lambda<Func<PropertyItem, bool>>(body!, x);
+        return q.Where(lambda);
+    }
+
+    /// <summary>Rebinds a lambda body onto a shared parameter so multiple predicates can share one <c>x</c>.</summary>
+    private sealed class ParameterRebinder(ParameterExpression from, ParameterExpression to) : ExpressionVisitor
+    {
+        protected override Expression VisitParameter(ParameterExpression node) => node == from ? to : node;
+    }
+
+    /// <summary>The date predicate for a single derived status (mirrors <see cref="RoundStatus.Derive"/>).</summary>
+    private static Expression<Func<PropertyItem, bool>> StatusPredicate(BiddingStatus status, DateOnly today) =>
         status switch
         {
-            BiddingStatus.Upcoming => q.Where(x => x.ViewingStart == null || x.ViewingStart > today),
-            BiddingStatus.Viewing => q.Where(x =>
-                x.ViewingStart <= today && (x.BiddingStart == null || x.BiddingStart > today)),
-            BiddingStatus.Bidding => q.Where(x => x.BiddingStart <= today && x.BiddingEnd >= today),
-            BiddingStatus.Closed => q.Where(x => x.BiddingEnd < today && x.OpeningDate >= today),
-            BiddingStatus.Opened => q.Where(x => x.OpeningDate < today),
-            _ => q,
+            BiddingStatus.Upcoming => x => x.ViewingStart == null || x.ViewingStart > today,
+            BiddingStatus.Viewing => x => x.ViewingStart <= today && (x.BiddingStart == null || x.BiddingStart > today),
+            BiddingStatus.Bidding => x => x.BiddingStart <= today && x.BiddingEnd >= today,
+            BiddingStatus.Closed => x => x.BiddingEnd < today && x.OpeningDate >= today,
+            _ => x => x.OpeningDate < today,
         };
 
     /// <summary>Order results per <paramref name="sort"/> with a stable tie-break on Id.</summary>

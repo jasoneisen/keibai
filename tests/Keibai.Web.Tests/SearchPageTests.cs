@@ -129,4 +129,49 @@ public sealed class SearchPageTests
         Assert.True(reader.LastQuery!.HasDocuments);
         Assert.Contains("Only with archived documents", cut.Markup);
     }
+
+    [Fact]
+    public void Status_checkbox_group_defaults_to_everything_except_Closed()
+    {
+        var reader = new FakePropertyReader
+        {
+            SearchResult = new PagedResult<PropertyItem>([Item()], 1, 1, 25),
+        };
+        using var ctx = NewContext(reader);
+
+        // No status params ⇒ the all-but-Closed default flows into the query and the checkboxes.
+        var cut = ctx.Render<Search>(p => p.AddCascadingValue<HttpContext>(TestHttp.Get()));
+
+        Assert.Equal(
+            [BiddingStatus.Upcoming, BiddingStatus.Viewing, BiddingStatus.Bidding, BiddingStatus.Opened],
+            reader.LastQuery!.Statuses);
+
+        // The hidden sentinel is always submitted; a checkbox exists for every lifecycle status.
+        Assert.Contains("name=\"statusSet\"", cut.Markup);
+        foreach (var s in Enum.GetValues<BiddingStatus>())
+        {
+            Assert.Contains($"id=\"status-{s}\"", cut.Markup);
+        }
+
+        // Closed is the only box left unchecked by default (a checked box renders the bare `checked` attr).
+        Assert.Matches(@"id=""status-Bidding""[^>]*\schecked", cut.Markup);
+        Assert.DoesNotMatch(@"id=""status-Closed""[^>]*\schecked", cut.Markup);
+    }
+
+    [Fact]
+    public void Multi_status_url_flows_into_the_query()
+    {
+        var reader = new FakePropertyReader
+        {
+            SearchResult = new PagedResult<PropertyItem>([Item()], 1, 1, 25),
+        };
+        using var ctx = NewContext(reader);
+
+        var cut = ctx.Render<Search>(p =>
+            p.AddCascadingValue<HttpContext>(TestHttp.Get("?status=Bidding&status=Closed")));
+
+        Assert.Equal([BiddingStatus.Bidding, BiddingStatus.Closed], reader.LastQuery!.Statuses);
+        Assert.Matches(@"id=""status-Closed""[^>]*\schecked", cut.Markup);
+        Assert.DoesNotMatch(@"id=""status-Viewing""[^>]*\schecked", cut.Markup);
+    }
 }
