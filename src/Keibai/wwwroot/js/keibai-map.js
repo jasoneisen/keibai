@@ -22,6 +22,19 @@
     var JAPAN_CENTER = [36.5, 138.0];
     var JAPAN_ZOOM = 5;
 
+    // Shared popup sizing — wider than Leaflet's defaults so addresses and the Street View embed
+    // breathe, but clamped to the viewport so the popup (content + ~44px of Leaflet chrome) still
+    // fits a narrow phone screen. minWidth pins the content box, letting width:100% children
+    // (the Street View iframe) fill it predictably.
+    function popupOpts(extra) {
+        var max = Math.min(320, (window.innerWidth || 360) - 60);
+        var opts = { minWidth: Math.min(280, max), maxWidth: max };
+        for (var key in extra) {
+            opts[key] = extra[key];
+        }
+        return opts;
+    }
+
     // Escape untrusted server strings (addresses etc.) before interpolating into popup HTML.
     function esc(value) {
         if (value === null || value === undefined) {
@@ -214,7 +227,7 @@
             var marker;
             if (group.length === 1) {
                 marker = L.marker(latlng);
-                marker.bindPopup(popupHtml(group[0]));
+                marker.bindPopup(popupHtml(group[0]), popupOpts({}));
             } else {
                 marker = L.marker(latlng, {
                     icon: L.divIcon({
@@ -224,7 +237,7 @@
                         iconAnchor: [15, 15]
                     })
                 });
-                marker.bindPopup(stackPopupHtml(group), { maxHeight: 260, minWidth: 240 });
+                marker.bindPopup(stackPopupHtml(group), popupOpts({ maxHeight: 300 }));
             }
             markers.push(marker);
         }
