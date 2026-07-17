@@ -94,6 +94,23 @@ app.MapPost("/admin/rebuild-derived", async (IMessageBus bus) =>
     return Results.Accepted("/admin/rebuild-derived", new { enqueued = "rebuild-derived" });
 });
 
+// Disaster recovery: re-materialize the document store from the surviving content-addressed blob store
+// (no BIT traffic; fully idempotent). Optional archiveLogPath (form or query) is the crawl-log JSONL used
+// to link archived PDFs back to their property; without it PDFs get RawCapture provenance but no
+// ArchivedDocument row. Run POST /admin/rebuild-derived afterwards to rebuild AuctionCase/AuctionRound.
+app.MapPost("/admin/rebuild-from-blobstore", async (HttpContext http, IMessageBus bus) =>
+{
+    string? archiveLogPath = http.Request.Query["archiveLogPath"];
+    if (string.IsNullOrWhiteSpace(archiveLogPath) && http.Request.HasFormContentType)
+    {
+        archiveLogPath = (await http.Request.ReadFormAsync())["archiveLogPath"];
+    }
+
+    archiveLogPath = string.IsNullOrWhiteSpace(archiveLogPath) ? null : archiveLogPath;
+    await bus.PublishAsync(new RebuildFromBlobstore(archiveLogPath));
+    return Results.Accepted("/admin/rebuild-from-blobstore", new { enqueued = "rebuild-from-blobstore", archiveLogPath });
+}).DisableAntiforgery();
+
 // Send a test alert through the configured IAlerter — verifies real end-to-end delivery (ntfy/SMTP).
 app.MapPost("/admin/test-alert", async (IAlerter alerter) =>
 {
