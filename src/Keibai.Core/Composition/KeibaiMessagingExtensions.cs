@@ -1,6 +1,8 @@
 using JasperFx.CodeGeneration.Model;
+using Keibai.Core.Bit;
 using Keibai.Core.Ingestion;
 using Wolverine;
+using Wolverine.ErrorHandling;
 
 namespace Keibai.Core.Composition;
 
@@ -47,6 +49,14 @@ public static class KeibaiMessagingExtensions
         opts.PublishMessage<SyncRoundResults>().ToLocalQueue("keibai-ingestion");
         opts.PublishMessage<BackfillResults>().ToLocalQueue("keibai-ingestion");
         opts.LocalQueue("keibai-ingestion").Sequential();
+
+        // A message that reaches the BIT client while the kill-switch is off throws
+        // IngestionDisabledException. The scheduler already skips enqueuing BIT work when ingestion is
+        // disabled, so anything that still trips the guard (a durable envelope replayed from a
+        // crawl-era run, a manual /sync trigger) is work nobody wants: discard it quietly instead of
+        // dead-lettering — a disabled kill-switch once filled the DLQ nightly and, worse, left durable
+        // sweep messages armed to fire the moment ingestion was re-enabled.
+        opts.OnException<IngestionDisabledException>().Discard();
 
         // A prefecture-listings handler legitimately runs for minutes (pages × 3s); the 60s default
         // execution timeout cancelled it mid-pagination. NOTE: this is a GLOBAL WolverineOptions
