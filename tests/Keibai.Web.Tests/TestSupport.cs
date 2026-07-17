@@ -34,6 +34,8 @@ public sealed class FakePropertyReader : IPropertyReader
     public SearchFacets Facets { get; set; } = new([], []);
     /// <summary>What <see cref="GetPdfAsync"/> returns.</summary>
     public ArchivedPdf? Pdf { get; set; }
+    /// <summary>What <see cref="GetMapPinsAsync"/> returns.</summary>
+    public MapPinsResult MapPins { get; set; } = new([], 0, 0, false);
 
     /// <summary>The last query passed to <see cref="SearchAsync"/>.</summary>
     public PropertyQuery? LastQuery { get; private set; }
@@ -60,6 +62,13 @@ public sealed class FakePropertyReader : IPropertyReader
     /// <inheritdoc/>
     public Task<ArchivedPdf?> GetPdfAsync(string propertyItemId, string sha256, CancellationToken ct = default) =>
         Task.FromResult(Pdf);
+
+    /// <inheritdoc/>
+    public Task<MapPinsResult> GetMapPinsAsync(PropertyQuery query, CancellationToken ct = default)
+    {
+        LastQuery = query;
+        return Task.FromResult(MapPins);
+    }
 }
 
 /// <summary>Scriptable <see cref="IResultsReader"/> for component tests.</summary>

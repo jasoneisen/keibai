@@ -168,6 +168,17 @@ app.MapGet("/jp/doc/{courtId}/{saleUnitId}/{sha}", async (
     return Results.File(pdf.Bytes, pdf.ContentType, enableRangeProcessing: true);
 });
 
+// Map pins for the /jp search: ALL properties matching the same query-string filters as the table
+// (unpaged), reduced to slim pins. The map fetches this once per filter change and plots client-side.
+// Same SharedPasswordMiddleware gate as every other route; makes zero BIT traffic (reads Marten only).
+app.MapGet("/jp/map-pins", async (IPropertyReader properties, HttpContext http, CancellationToken ct) =>
+{
+    var query = SearchQueryString.Parse(http.Request.Query);
+    var result = await properties.GetMapPinsAsync(query, ct);
+    // Default web serialization: camelCase members + DateOnly as "yyyy-MM-dd" (verified in tests).
+    return Results.Json(result);
+});
+
 // --- Phase 3 write actions (plain-form POST + Post-Redirect-Get; static-SSR friendly) ---
 // Antiforgery is disabled on these: this is a single-operator personal app and the shared-password gate
 // is the real guard. `return` is validated to a local path to avoid open redirects.

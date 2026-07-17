@@ -115,6 +115,16 @@
         </div>
     </div>
 
+    @* Property map — a pannable Leaflet map of every pin matching the current filters, loaded client-side
+       from /jp/map-pins (same query string as this page) by keibai-map.js. Static SSR renders only the
+       empty container + its data-* config; the map itself is built in the browser. *@
+    <div class="card mb-4">
+        <div id="prop-map" data-pins-url="/jp/map-pins@(SearchQueryString.ToQueryString(query))"></div>
+        <div class="card-footer">
+            <small class="text-muted">地図上の位置は目安です / Map positions are approximate · <span id="prop-map-count"></span></small>
+        </div>
+    </div>
+
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
         <span class="text-muted jp-num">@results.Total 件 / @(results.Total == 1 ? "property" : "properties")</span>
         <form method="post" action="/jp/search/save@(SearchQueryString.ToQueryString(query))" class="d-flex gap-2">

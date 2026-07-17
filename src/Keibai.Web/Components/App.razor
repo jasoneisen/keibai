@@ -11,6 +11,9 @@
     <base href="/" />
     <link rel="stylesheet" href="/lib/bootstrap/css/bootstrap.min.css" />
     <link rel="stylesheet" href="/lib/bootstrap-icons/bootstrap-icons.min.css" />
+    @* Leaflet — self-hosted (no CDN), powers the /jp property map. keibai.css must stay last so its
+       map rules can override Leaflet defaults. *@
+    <link rel="stylesheet" href="/lib/leaflet/leaflet.css" />
     <link rel="stylesheet" href="/css/keibai.css" />
     <HeadOutlet />
 </head>
@@ -19,6 +22,11 @@
     @* bootstrap.bundle.min.js powers the navbar toggler (delegated data-bs-* listeners, enhanced-nav safe);
        it loads alongside blazor.web.js. *@
     <script src="/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    @* Leaflet loads after Bootstrap so the L global exists before keibai-map.js runs. *@
+    <script src="/lib/leaflet/leaflet.js"></script>
     <script src="_framework/blazor.web.js"></script>
+    @* keibai-map.js goes AFTER blazor.web.js so it can hook the 'enhancedload' event to re-init the
+       /jp map after enhanced navigation swaps the DOM (it guards gracefully if Blazor isn't ready). *@
+    <script src="/js/keibai-map.js"></script>
 </body>
 </html>
