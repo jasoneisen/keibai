@@ -68,17 +68,39 @@
     }
 
     function destroyMap() {
-        if (mapInstance) {
-            try {
-                mapInstance.remove();
-            } catch (e) {
-                // ignore — map may already be gone if the DOM was swapped out.
-            }
-            mapInstance = null;
+        if (!mapInstance) {
+            return;
+        }
+        var container = null;
+        try {
+            container = mapInstance.getContainer();
+            mapInstance.remove();
+        } catch (e) {
+            // ignore — map may already be gone if the DOM was swapped out.
+        }
+        mapInstance = null;
+
+        // Enhanced navigation RECYCLES DOM nodes: the map div may already have been morphed into
+        // ordinary content on the next page, and map.remove() leaves Leaflet's container classes
+        // behind. leaflet-touch-drag/-zoom carry `touch-action: none`, which froze page scrolling
+        // on mobile (and the drag handlers made the recycled card pannable). Scrub the residue so
+        // a recycled node behaves like a plain div again.
+        if (container) {
+            container.className = container.className
+                .split(" ")
+                .filter(function (cls) { return cls.indexOf("leaflet") !== 0; })
+                .join(" ");
+            container.removeAttribute("style"); // only Leaflet writes inline styles here
         }
     }
 
     function initMap() {
+        // Tear down FIRST, unconditionally: enhanced navigation can land on a page WITHOUT the map
+        // container (e.g. the property detail page), and returning early with a live map instance
+        // left its touch handlers + touch-action:none classes on a node Blazor recycled into
+        // ordinary content — a detached, draggable "card" and an unscrollable page on mobile.
+        destroyMap();
+
         var el = document.getElementById("prop-map");
         if (!el) {
             return; // Only the /jp search page has this element.
@@ -86,9 +108,6 @@
         if (typeof L === "undefined") {
             return; // Leaflet failed to load; leave the map area empty rather than crashing.
         }
-
-        // Dispose any prior instance (enhanced navigation may re-run this without a full reload).
-        destroyMap();
 
         // Self-hosted marker images live alongside leaflet.css under /lib/leaflet/images.
         L.Icon.Default.imagePath = "/lib/leaflet/images/";
