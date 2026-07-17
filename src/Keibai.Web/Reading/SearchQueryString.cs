@@ -13,6 +13,12 @@ namespace Keibai.Web.Reading;
 /// </summary>
 public static class SearchQueryString
 {
+    /// <summary>The default status filter (everything except <see cref="BiddingStatus.Closed"/>).</summary>
+    public static readonly IReadOnlyList<BiddingStatus> DefaultStatuses =
+    [
+        BiddingStatus.Upcoming, BiddingStatus.Viewing, BiddingStatus.Bidding, BiddingStatus.Opened,
+    ];
+
     /// <summary>Parse a <see cref="PropertyQuery"/> from the request query collection.</summary>
     public static PropertyQuery Parse(IQueryCollection q) => new()
     {
@@ -21,7 +27,7 @@ public static class SearchQueryString
         Type = Enum.TryParse<SaleCls>(q["type"], out var t) ? t : null,
         MinPrice = Long(q["min"]),
         MaxPrice = Long(q["max"]),
-        Status = Enum.TryParse<BiddingStatus>(q["status"], true, out var s) ? s : BiddingStatus.Any,
+        Statuses = Statuses(q),
         OpeningFrom = Date(q["from"]),
         OpeningTo = Date(q["to"]),
         Text = Str(q["q"]),
@@ -30,6 +36,33 @@ public static class SearchQueryString
         Page = Page(q["page"]),
         PageSize = 25,
     };
+
+    /// <summary>
+    /// Parse the multi-select status filter from repeated <c>status</c> params, tri-state:
+    /// <list type="bullet">
+    /// <item>Any parseable <c>status</c> values ⇒ exactly those (old single-value URLs are just a one-element list).</item>
+    /// <item>No <c>status</c> but the hidden <c>statusSet=1</c> sentinel present ⇒ the user cleared every box ⇒
+    ///   empty list (no constraint, show everything).</item>
+    /// <item>Neither present (a bare URL / bookmark) ⇒ the <see cref="DefaultStatuses"/> default (all but Closed).</item>
+    /// </list>
+    /// Unparseable values are ignored.
+    /// </summary>
+    private static IReadOnlyList<BiddingStatus> Statuses(IQueryCollection q)
+    {
+        var picked = q["status"]
+            .Where(v => Enum.TryParse<BiddingStatus>(v, true, out _))
+            .Select(v => Enum.Parse<BiddingStatus>(v!, true))
+            .Distinct()
+            .ToArray();
+
+        if (picked.Length > 0)
+        {
+            return picked;
+        }
+
+        // Sentinel present with no boxes checked ⇒ deliberate "none" (empty = no filter). Otherwise default.
+        return Bool(q["statusSet"]) ? [] : DefaultStatuses;
+    }
 
     /// <summary>Build a query string (with leading <c>?</c>) for <paramref name="query"/>, optionally overriding the page.</summary>
     public static string ToQueryString(PropertyQuery query, int? page = null)
@@ -40,7 +73,20 @@ public static class SearchQueryString
         Add(parts, "type", query.Type?.ToString());
         Add(parts, "min", query.MinPrice?.ToString(CultureInfo.InvariantCulture));
         Add(parts, "max", query.MaxPrice?.ToString(CultureInfo.InvariantCulture));
-        Add(parts, "status", query.Status == BiddingStatus.Any ? null : query.Status.ToString());
+        if (query.Statuses.Count == 0)
+        {
+            // Deliberate "none" (no status constraint) — the sentinel distinguishes it from a bare URL, which
+            // would otherwise re-parse to the all-but-Closed default.
+            Add(parts, "statusSet", "1");
+        }
+        else
+        {
+            foreach (var s in query.Statuses)
+            {
+                Add(parts, "status", s.ToString());
+            }
+        }
+
         Add(parts, "from", query.OpeningFrom?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
         Add(parts, "to", query.OpeningTo?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
         Add(parts, "q", query.Text);

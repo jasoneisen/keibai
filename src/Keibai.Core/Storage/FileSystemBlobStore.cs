@@ -65,6 +65,28 @@ public sealed class FileSystemBlobStore : IDocumentBlobStore
         return Task.FromResult(total);
     }
 
+    /// <inheritdoc/>
+    public IEnumerable<(string BlobPath, DateTimeOffset LastWrite)> EnumerateBlobs()
+    {
+        if (!Directory.Exists(_root))
+        {
+            yield break;
+        }
+
+        foreach (var file in Directory.EnumerateFiles(_root, "*", SearchOption.AllDirectories))
+        {
+            if (file.EndsWith(".tmp", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            // Relative path in the store's own '/'-separated convention (so callers get a BlobPath the
+            // web app can serve, matching PutAsync's return).
+            var relative = Path.GetRelativePath(_root, file).Replace(Path.DirectorySeparatorChar, '/');
+            yield return (relative, new FileInfo(file).LastWriteTimeUtc);
+        }
+    }
+
     private string Resolve(string path) =>
         Path.Combine(_root, path.Replace('/', Path.DirectorySeparatorChar));
 

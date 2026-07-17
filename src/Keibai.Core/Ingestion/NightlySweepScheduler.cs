@@ -1,6 +1,8 @@
+using Keibai.Core.Bit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Wolverine;
 
 namespace Keibai.Core.Ingestion;
@@ -21,12 +23,15 @@ namespace Keibai.Core.Ingestion;
 /// <item><b>18:00 JST</b> — <see cref="ScheduleResultsSync"/>: the PRIMARY results trigger, run the evening
 /// of a 開札 after BIT publishes each round's 売却結果 (~15:00–16:00 JST).</item>
 /// </list>
-/// Gated by the same kill-switch as the client — a disabled ingestion never sweeps (the enqueued messages
-/// simply no-op at the rate-limit handler), but the monitor still runs.
+/// Gated by the ingestion kill-switch: when <see cref="BitOptions.Enabled"/> is false the BIT-touching
+/// messages are never enqueued (the rate-limit handler's <see cref="IngestionDisabledException"/> stays
+/// as the deep last-resort guard), while store-only jobs — derived-doc rebuild, sweep summary/monitor,
+/// digest — still run.
 /// </summary>
 public sealed class NightlySweepScheduler(
     IServiceProvider services,
     TimeProvider time,
+    IOptionsMonitor<BitOptions> ingestion,
     ILogger<NightlySweepScheduler> log) : BackgroundService
 {
     private static readonly TimeOnly SweepAt = new(1, 0);
@@ -52,26 +57,36 @@ public sealed class NightlySweepScheduler(
 
             await using var scope = services.CreateAsyncScope();
             var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
-            switch (job)
+            var enabled = ingestion.CurrentValue.Enabled;
+            var messages = MessagesFor(job, enabled);
+            if (messages.Count < MessagesFor(job, ingestionEnabled: true).Count)
             {
-                case Job.Sweep:
-                    await bus.PublishAsync(new SyncCourts()).ConfigureAwait(false);
-                    break;
-                case Job.PostSweep:
-                    await bus.PublishAsync(new ScheduleArchiveWork()).ConfigureAwait(false);
-                    await bus.PublishAsync(new ScheduleResultsSync()).ConfigureAwait(false);
-                    await bus.PublishAsync(new RebuildDerivedDocuments()).ConfigureAwait(false);
-                    await bus.PublishAsync(new SummarizeSweep()).ConfigureAwait(false);
-                    break;
-                case Job.Digest:
-                    await bus.PublishAsync(new SendSavedSearchDigest()).ConfigureAwait(false);
-                    break;
-                case Job.ResultsEvening:
-                    await bus.PublishAsync(new ScheduleResultsSync()).ConfigureAwait(false);
-                    break;
+                log.LogInformation(
+                    "Ingestion kill-switch is off — skipped the BIT-touching messages for {Job}.", job);
+            }
+
+            foreach (var message in messages)
+            {
+                await bus.PublishAsync(message).ConfigureAwait(false);
             }
         }
     }
+
+    /// <summary>
+    /// The messages a job publishes. When the kill-switch is off, every message whose handler talks to
+    /// BIT (sweep, archive backlog, results sync) is omitted — enqueuing it would only dead-letter at
+    /// the rate-limit handler — while store-only work (derived rebuild, sweep summary, digest) remains.
+    /// </summary>
+    internal static IReadOnlyList<object> MessagesFor(Job job, bool ingestionEnabled) => job switch
+    {
+        Job.Sweep => ingestionEnabled ? [new SyncCourts()] : [],
+        Job.PostSweep => ingestionEnabled
+            ? [new ScheduleArchiveWork(), new ScheduleResultsSync(), new RebuildDerivedDocuments(), new SummarizeSweep()]
+            : [new RebuildDerivedDocuments(), new SummarizeSweep()],
+        Job.Digest => [new SendSavedSearchDigest()],
+        Job.ResultsEvening => ingestionEnabled ? [new ScheduleResultsSync()] : [],
+        _ => throw new ArgumentOutOfRangeException(nameof(job), job, null),
+    };
 
     private (TimeSpan Delay, Job Job) NextJob()
     {
@@ -99,7 +114,7 @@ public sealed class NightlySweepScheduler(
         _ => throw new ArgumentOutOfRangeException(nameof(job), job, null),
     };
 
-    private enum Job
+    internal enum Job
     {
         Sweep,
         PostSweep,

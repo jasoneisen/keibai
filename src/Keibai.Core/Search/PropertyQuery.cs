@@ -8,8 +8,6 @@ namespace Keibai.Core.Search;
 /// </summary>
 public enum BiddingStatus
 {
-    /// <summary>No status filter.</summary>
-    Any = 0,
     /// <summary>Before 閲覧開始 — announced but not yet viewable.</summary>
     Upcoming = 1,
     /// <summary>閲覧中 — documents viewable, bidding not yet open.</summary>
@@ -55,8 +53,13 @@ public sealed record PropertyQuery
     public long? MinPrice { get; init; }
     /// <summary>Maximum 売却基準価額 (yen, inclusive).</summary>
     public long? MaxPrice { get; init; }
-    /// <summary>Bidding-lifecycle filter.</summary>
-    public BiddingStatus Status { get; init; } = BiddingStatus.Any;
+    /// <summary>
+    /// Bidding-lifecycle filter — an OR-set of statuses to include. Empty ⇒ no status constraint (all
+    /// statuses), and so does the full five-element set. A plain list (not value-equality-significant):
+    /// <see cref="PropertyQuery"/> is only serialized (persisted in <see cref="SavedSearch"/>) and replayed
+    /// through <see cref="PropertySearch.Apply"/>; nothing compares two queries for equality.
+    /// </summary>
+    public IReadOnlyList<BiddingStatus> Statuses { get; init; } = [];
     /// <summary>開札 on/after this date.</summary>
     public DateOnly? OpeningFrom { get; init; }
     /// <summary>開札 on/before this date.</summary>
@@ -75,7 +78,7 @@ public sealed record PropertyQuery
     /// <summary>True when no filter is set (an empty search = browse everything).</summary>
     public bool IsEmpty =>
         string.IsNullOrWhiteSpace(PrefectureId) && string.IsNullOrWhiteSpace(CourtId) && Type is null
-        && MinPrice is null && MaxPrice is null && Status == BiddingStatus.Any
+        && MinPrice is null && MaxPrice is null && Statuses.Count == 0
         && OpeningFrom is null && OpeningTo is null && string.IsNullOrWhiteSpace(Text) && !HasDocuments;
 }
 

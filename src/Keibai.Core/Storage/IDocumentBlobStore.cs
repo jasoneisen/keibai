@@ -22,4 +22,11 @@ public interface IDocumentBlobStore
 
     /// <summary>Total bytes currently stored across all blobs (powers the storage watchdog).</summary>
     Task<long> GetTotalBytesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Enumerate every stored blob as (blobPath, lastWriteTime). Powers the offline blobstore rebuild
+    /// (disaster recovery: re-materialize Marten documents from the surviving content-addressed store).
+    /// <c>LastWrite</c> is the on-disk mtime — for recovered captures this IS the original capture time.
+    /// </summary>
+    IEnumerable<(string BlobPath, DateTimeOffset LastWrite)> EnumerateBlobs();
 }

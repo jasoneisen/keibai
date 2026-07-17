@@ -66,6 +66,21 @@ public sealed record ScheduleResultsSync;
 /// </summary>
 public sealed record ReparseDetailCaptures;
 
+/// <summary>
+/// Disaster recovery: OFFLINE re-materialization of the Marten documents from the surviving
+/// content-addressed blob store. Walks the configured blob root, classifies each blob (PDF magic + page
+/// <c>&lt;title&gt;</c> markers), and rebuilds <see cref="Domain.RawCapture"/> provenance,
+/// <see cref="Domain.PropertyItem"/> (detail + listing fold), <see cref="Domain.ArchivedDocument"/>
+/// (linked to the crawl-log's archive lines), <see cref="Domain.SaleResult"/>, and <see cref="Domain.Court"/>.
+/// Touches NO BIT — it replays captured bytes from disk — and is fully idempotent: it upserts on natural
+/// keys and never deletes or overwrites existing data to null. <paramref name="ArchiveLogPath"/> is the
+/// crawl-log JSONL (one <c>{propertyId, bytes}</c> per archived 3点セット) used to link PDFs back to their
+/// property; null skips <see cref="Domain.ArchivedDocument"/> reconstruction. The derived
+/// <see cref="Domain.AuctionCase"/>/<see cref="Domain.AuctionRound"/> docs are NOT rebuilt here — run
+/// <see cref="RebuildDerivedDocuments"/> afterwards.
+/// </summary>
+public sealed record RebuildFromBlobstore(string? ArchiveLogPath = null);
+
 // --- Phase 2: monitoring ---
 
 /// <summary>

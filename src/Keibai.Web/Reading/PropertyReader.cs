@@ -14,6 +14,16 @@ namespace Keibai.Web.Reading;
 public sealed class PropertyReader(
     IKeibaiStoreAccessor store, IDocumentBlobStore blobs, TimeProvider time) : IPropertyReader
 {
+    /// <summary>Max pins returned in one map-pins payload (bounds the response; the corpus is ~1300).</summary>
+    private const int MapPinCap = 5000;
+
+    // Japan bounding box — drop garbage BIT coordinates (0/0, transposed, mis-parsed) so the map never
+    // plots a pin in the ocean. Anything inside is treated as a usable per-address geocode.
+    private const double MinLat = 20.0;
+    private const double MaxLat = 46.0;
+    private const double MinLng = 122.0;
+    private const double MaxLng = 155.0;
+
     /// <inheritdoc/>
     public async Task<PagedResult<PropertyItem>> SearchAsync(PropertyQuery query, CancellationToken ct = default)
     {
@@ -32,6 +42,53 @@ public sealed class PropertyReader(
             .ConfigureAwait(false);
 
         return new PagedResult<PropertyItem>(items, total, page, size);
+    }
+
+    /// <inheritdoc/>
+    public async Task<MapPinsResult> GetMapPinsAsync(PropertyQuery query, CancellationToken ct = default)
+    {
+        var today = JstClock.Today(time);
+        await using var session = store.QuerySession();
+
+        // Same filter surface as the search table (Page/PageSize/Sort deliberately ignored — the map plots
+        // every match), so map and table can never disagree about what is on-screen.
+        var filtered = PropertySearch.Apply(session.Query<PropertyItem>(), query, today);
+
+        // Usable coords = present AND inside the Japan bounding box. Both predicates translate to SQL, so
+        // the split (with-coords vs total) is two cheap counts, not an in-memory scan.
+        var withCoords = filtered.Where(x =>
+            x.Latitude != null && x.Longitude != null
+            && x.Latitude >= MinLat && x.Latitude <= MaxLat
+            && x.Longitude >= MinLng && x.Longitude <= MaxLng);
+
+        var total = await filtered.CountAsync(ct).ConfigureAwait(false);
+        var totalWithCoords = await withCoords.CountAsync(ct).ConfigureAwait(false);
+        var withoutCoords = total - totalWithCoords;
+
+        // Deterministic order (by identity) before capping, and take one extra to detect truncation.
+        var items = await withCoords
+            .OrderBy(x => x.Id)
+            .Take(MapPinCap + 1)
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+
+        var capped = items.Count > MapPinCap;
+        var pins = items
+            .Take(MapPinCap)
+            .Select(item => new MapPin(
+                item.CourtId,
+                item.SaleUnitId,
+                item.Latitude!.Value,
+                item.Longitude!.Value,
+                Display.TypeLabel(item.SaleCls),
+                item.DetailAddress ?? item.RawAddress,
+                item.SaleStandardAmount,
+                item.MinimumBidAmount,
+                item.BiddingEnd,
+                Display.StatusLabel(PropertySearch.DeriveStatus(item, today))))
+            .ToList();
+
+        return new MapPinsResult(pins, totalWithCoords, withoutCoords, capped);
     }
 
     /// <inheritdoc/>
