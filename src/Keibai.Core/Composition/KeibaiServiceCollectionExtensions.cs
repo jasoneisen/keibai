@@ -113,6 +113,11 @@ public static class KeibaiServiceCollectionExtensions
                 http.BaseAddress = new Uri(options.BaseUrl);
                 http.DefaultRequestHeaders.UserAgent.ParseAdd(options.UserAgent);
                 http.Timeout = Timeout.InfiniteTimeSpan;
+                // Connection: close on every request. With ≥ MinRequestInterval between requests, BIT
+                // idle-closes pooled keep-alive connections and reusing one fails mid-response with
+                // HttpIOException(ResponseEnded); a fresh connection per request removes that failure
+                // mode for the cost of one handshake per ≥3s.
+                http.DefaultRequestHeaders.ConnectionClose = true;
             })
             .AddPolicyHandler((sp, _) => BitRetryPolicy.Create(sp))
             .AddHttpMessageHandler<BitRateLimitingHandler>();
